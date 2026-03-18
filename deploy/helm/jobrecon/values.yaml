@@ -1,0 +1,98 @@
+# Default values for jobrecon
+# This is a YAML-formatted file.
+
+global:
+  image:
+    registry: ghcr.io
+    tag: latest
+    pullPolicy: IfNotPresent
+
+# Identity Service
+identity:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: jobrecon-identity
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Profile Service
+profile:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: jobrecon-profile
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# API Gateway
+gateway:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: jobrecon-gateway
+  service:
+    type: ClusterIP
+    port: 80
+  ingress:
+    enabled: true
+    className: traefik
+    hosts:
+      - host: api.jobrecon.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Frontend
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: jobrecon-frontend
+  service:
+    port: 80
+  ingress:
+    enabled: true
+    className: traefik
+    hosts:
+      - host: jobrecon.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Secrets - Values should be provided via --set or external secret management
+secrets:
+  # These should be provided at deploy time, NEVER commit actual values
+  postgresPassword: ""
+  jwtSigningKey: ""
+  rabbitMqPassword: ""

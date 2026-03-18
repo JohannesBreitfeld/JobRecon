@@ -1,0 +1,6 @@
+@JobRecon.Gateway_HostAddress = http://localhost:5136
+
+GET {{JobRecon.Gateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,12 @@
+# Default owners for everything
+* @JohannesBreitfeld
+
+# Backend services
+/src/ @JohannesBreitfeld
+
+# Frontend
+/frontend/ @JohannesBreitfeld
+
+# Infrastructure and deployment
+/deploy/ @JohannesBreitfeld
+/.github/ @JohannesBreitfeld

@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: jobrecon
+
+resources:
+  - ../../base
+
+# Local development patches
+patches:
+  # Reduce replicas for local development
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+
+# Use local registry for images
+images:
+  - name: ghcr.io/jobrecon-identity
+    newName: localhost:5000/jobrecon-identity
+    newTag: dev
+  - name: ghcr.io/jobrecon-profile
+    newName: localhost:5000/jobrecon-profile
+    newTag: dev
+  - name: ghcr.io/jobrecon-gateway
+    newName: localhost:5000/jobrecon-gateway
+    newTag: dev
+  - name: ghcr.io/jobrecon-frontend
+    newName: localhost:5000/jobrecon-frontend
+    newTag: dev
+
+commonLabels:
+  environment: local

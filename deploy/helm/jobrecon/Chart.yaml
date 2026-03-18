@@ -1,0 +1,12 @@
+apiVersion: v2
+name: jobrecon
+description: JobRecon - AI-Powered Job Matching Platform
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - job-matching
+  - ai
+  - microservices
+maintainers:
+  - name: JobRecon Team

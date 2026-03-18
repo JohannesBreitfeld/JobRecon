@@ -1,0 +1,53 @@
+{{- if .Values.identity.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-identity
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "identity") | nindent 4 }}
+spec:
+  replicas: {{ .Values.identity.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "identity") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "identity") | nindent 8 }}
+    spec:
+      containers:
+        - name: identity
+          image: {{ include "jobrecon.image" (dict "global" .Values.global "service" .Values.identity) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: ConnectionStrings__DefaultConnection
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: postgres-connection-string
+            - name: Jwt__SigningKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: jwt-signing-key
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.identity.resources | nindent 12 }}
+{{- end }}

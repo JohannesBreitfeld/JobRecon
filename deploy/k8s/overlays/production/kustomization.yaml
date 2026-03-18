@@ -1,0 +1,53 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: jobrecon
+
+resources:
+  - ../../base
+
+# Production patches
+patches:
+  # Increase replicas for production
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: identity
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: profile
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: gateway
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: frontend
+
+# Production images from GHCR
+images:
+  - name: ghcr.io/jobrecon-identity
+    newTag: latest
+  - name: ghcr.io/jobrecon-profile
+    newTag: latest
+  - name: ghcr.io/jobrecon-gateway
+    newTag: latest
+  - name: ghcr.io/jobrecon-frontend
+    newTag: latest
+
+commonLabels:
+  environment: production

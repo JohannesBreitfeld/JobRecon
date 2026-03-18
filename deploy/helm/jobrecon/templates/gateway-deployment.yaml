@@ -1,0 +1,47 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-gateway
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 4 }}
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 8 }}
+    spec:
+      containers:
+        - name: gateway
+          image: {{ include "jobrecon.image" (dict "global" .Values.global "service" .Values.gateway) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: ReverseProxy__Clusters__identity__Destinations__default__Address
+              value: http://{{ include "jobrecon.fullname" . }}-identity:{{ .Values.identity.service.port }}
+            - name: ReverseProxy__Clusters__profile__Destinations__default__Address
+              value: http://{{ include "jobrecon.fullname" . }}-profile:{{ .Values.profile.service.port }}
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+{{- end }}

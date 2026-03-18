@@ -1,0 +1,40 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-frontend
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "frontend") | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "frontend") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "frontend") | nindent 8 }}
+    spec:
+      containers:
+        - name: frontend
+          image: {{ include "jobrecon.image" (dict "global" .Values.global "service" .Values.frontend) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+{{- end }}
