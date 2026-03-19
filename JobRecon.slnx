@@ -14,5 +14,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/JobRecon.Identity.Tests/JobRecon.Identity.Tests.csproj" />
+    <Project Path="tests/JobRecon.Profile.Tests/JobRecon.Profile.Tests.csproj" />
   </Folder>
 </Solution>

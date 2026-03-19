@@ -1,0 +1,185 @@
+import { useState } from 'react';
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Grid,
+  Card,
+  CardContent,
+  IconButton,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
+import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
+import { useProfileStore } from '../../stores/profileStore';
+import type { SkillLevel, AddSkillRequest } from '../../api/profile';
+
+const skillLevelLabels: Record<SkillLevel, string> = {
+  Beginner: 'Nybörjare',
+  Intermediate: 'Mellannivå',
+  Advanced: 'Avancerad',
+  Expert: 'Expert',
+};
+
+const skillLevelColors: Record<SkillLevel, 'default' | 'primary' | 'secondary' | 'success'> = {
+  Beginner: 'default',
+  Intermediate: 'primary',
+  Advanced: 'secondary',
+  Expert: 'success',
+};
+
+export function SkillsSection() {
+  const { profile, addSkill, removeSkill, isLoading } = useProfileStore();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newSkill, setNewSkill] = useState<AddSkillRequest>({
+    name: '',
+    level: 'Intermediate',
+    yearsOfExperience: undefined,
+  });
+
+  const handleOpenDialog = () => {
+    setNewSkill({ name: '', level: 'Intermediate', yearsOfExperience: undefined });
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+  };
+
+  const handleAddSkill = async () => {
+    if (newSkill.name.trim()) {
+      await addSkill(newSkill);
+      setDialogOpen(false);
+    }
+  };
+
+  const handleRemoveSkill = async (skillId: string) => {
+    await removeSkill(skillId);
+  };
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">Kompetenser</Typography>
+        <Button
+          variant="outlined"
+          startIcon={<AddIcon />}
+          onClick={handleOpenDialog}
+          disabled={isLoading}
+        >
+          Lägg till kompetens
+        </Button>
+      </Box>
+
+      {profile?.skills.length === 0 ? (
+        <Typography color="text.secondary">
+          Inga kompetenser tillagda ännu. Lägg till dina färdigheter för att matcha med relevanta jobb.
+        </Typography>
+      ) : (
+        <Grid container spacing={2}>
+          {profile?.skills.map((skill) => (
+            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={skill.id}>
+              <Card variant="outlined">
+                <CardContent sx={{ pb: 1, '&:last-child': { pb: 1 } }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight="medium">
+                        {skill.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5 }}>
+                        <Chip
+                          label={skillLevelLabels[skill.level]}
+                          size="small"
+                          color={skillLevelColors[skill.level]}
+                        />
+                        {skill.yearsOfExperience && (
+                          <Typography variant="body2" color="text.secondary">
+                            {skill.yearsOfExperience} år
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveSkill(skill.id)}
+                      disabled={isLoading}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+
+      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Lägg till kompetens</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              fullWidth
+              label="Kompetens"
+              value={newSkill.name}
+              onChange={(e) => setNewSkill((prev) => ({ ...prev, name: e.target.value }))}
+              disabled={isLoading}
+              placeholder="t.ex. React, Python, Projektledning"
+            />
+
+            <FormControl fullWidth>
+              <InputLabel>Nivå</InputLabel>
+              <Select
+                value={newSkill.level}
+                label="Nivå"
+                onChange={(e) =>
+                  setNewSkill((prev) => ({ ...prev, level: e.target.value as SkillLevel }))
+                }
+                disabled={isLoading}
+              >
+                {Object.entries(skillLevelLabels).map(([value, label]) => (
+                  <MenuItem key={value} value={value}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="År av erfarenhet"
+              type="number"
+              value={newSkill.yearsOfExperience || ''}
+              onChange={(e) =>
+                setNewSkill((prev) => ({
+                  ...prev,
+                  yearsOfExperience: e.target.value ? parseInt(e.target.value, 10) : undefined,
+                }))
+              }
+              disabled={isLoading}
+              slotProps={{ htmlInput: { min: 0, max: 50 } }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Avbryt</Button>
+          <Button
+            variant="contained"
+            onClick={handleAddSkill}
+            disabled={isLoading || !newSkill.name.trim()}
+          >
+            Lägg till
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
