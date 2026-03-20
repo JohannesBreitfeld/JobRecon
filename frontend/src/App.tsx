@@ -4,6 +4,7 @@ import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ProfilePage } from './components/profile';
+import { JobsPage } from './components/jobs';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/jobs" element={<JobsPage />} />
       </Routes>
     </Layout>
   );

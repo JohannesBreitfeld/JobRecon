@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/src/Services/">
     <Project Path="src/Services/JobRecon.Identity/JobRecon.Identity.csproj" />
+    <Project Path="src/Services/JobRecon.Jobs/JobRecon.Jobs.csproj" />
     <Project Path="src/Services/JobRecon.Profile/JobRecon.Profile.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
@@ -14,6 +15,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/JobRecon.Identity.Tests/JobRecon.Identity.Tests.csproj" />
+    <Project Path="tests/JobRecon.Jobs.Tests/JobRecon.Jobs.Tests.csproj" />
     <Project Path="tests/JobRecon.Profile.Tests/JobRecon.Profile.Tests.csproj" />
   </Folder>
 </Solution>
