@@ -1,5 +1,5 @@
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0-preview AS build
 WORKDIR /src
 
 # Copy solution and project files
@@ -20,7 +20,7 @@ WORKDIR /src/src/Services/JobRecon.Identity
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0-preview AS runtime
 WORKDIR /app
 
 # Create non-root user for security
