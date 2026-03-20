@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.Dashboard;
+using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Infrastructure;
 using JobRecon.Jobs.Services;
 using Microsoft.EntityFrameworkCore;
@@ -38,10 +39,17 @@ public static class WebApplicationExtensions
 
     public static void ConfigureRecurringJobs(this WebApplication app)
     {
+        // Fetch jobs daily at 6 AM (daily files are published once per day)
         RecurringJob.AddOrUpdate<IJobFetcherService>(
             "fetch-all-jobs",
             service => service.FetchAllJobsAsync(CancellationToken.None),
-            "0 */2 * * *"); // Every 2 hours
+            "0 6 * * *"); // Daily at 6:00 AM
+
+        // Enrich pending jobs every 15 minutes
+        RecurringJob.AddOrUpdate<IJobEnrichmentService>(
+            "enrich-pending-jobs",
+            service => service.EnrichPendingJobsAsync(50, CancellationToken.None),
+            "*/15 * * * *"); // Every 15 minutes
     }
 }
 

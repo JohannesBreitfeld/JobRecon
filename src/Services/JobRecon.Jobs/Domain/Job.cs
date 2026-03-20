@@ -27,6 +27,11 @@ public sealed class Job
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    // Enrichment tracking
+    public bool IsEnriched { get; set; }
+    public DateTime? EnrichedAt { get; set; }
+    public string? EnrichmentError { get; set; }
+
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = null!;
 

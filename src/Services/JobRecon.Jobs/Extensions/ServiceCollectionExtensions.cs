@@ -31,11 +31,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJobService, JobService>();
         services.AddScoped<IJobSourceService, JobSourceService>();
         services.AddScoped<IJobFetcherService, JobFetcherService>();
+        services.AddScoped<IJobEnrichmentService, JobEnrichmentService>();
 
         // Register job fetchers
-        services.AddHttpClient<ArbetsformedlingenFetcher>()
+        services.AddHttpClient<JobTechLinksFetcher>()
             .AddPolicyHandler(GetRetryPolicy());
-        services.AddScoped<IJobFetcher, ArbetsformedlingenFetcher>();
+        services.AddScoped<IJobFetcher, JobTechLinksFetcher>();
+
+        // HttpClient for enrichment service
+        services.AddHttpClient<JobEnrichmentService>()
+            .AddPolicyHandler(GetRetryPolicy());
 
         return services;
     }

@@ -8,7 +8,8 @@ public enum JobSourceType
     Indeed,
     Glassdoor,
     CustomRss,
-    ApiIntegration
+    ApiIntegration,
+    JobTechLinks
 }
 
 public enum EmploymentType
