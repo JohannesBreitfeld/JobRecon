@@ -38,20 +38,17 @@ updates:
         patterns:
           - "*"
 
-  # Docker
+  # Docker - all services grouped together
   - package-ecosystem: "docker"
-    directory: "/src/Services/JobRecon.Identity"
+    directories:
+      - "/src/Services/JobRecon.Identity"
+      - "/src/Services/JobRecon.Profile"
+      - "/src/Services/JobRecon.Jobs"
+      - "/src/Gateway/JobRecon.Gateway"
+      - "/frontend"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "docker"
-    directory: "/src/Services/JobRecon.Profile"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "docker"
-    directory: "/src/Gateway/JobRecon.Gateway"
-    schedule:
-      interval: "weekly"
-  - package-ecosystem: "docker"
-    directory: "/frontend"
-    schedule:
-      interval: "weekly"
+    groups:
+      docker:
+        patterns:
+          - "*"
