@@ -2,10 +2,10 @@ using System.Text;
 using JobRecon.Matching.Configuration;
 using JobRecon.Matching.Contracts;
 using JobRecon.Matching.Services;
+using JobRecon.Protos.Jobs;
+using JobRecon.Protos.Profile;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Polly;
-using Polly.Extensions.Http;
 
 namespace JobRecon.Matching.Extensions;
 
@@ -16,11 +16,11 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
-        services.Configure<ServiceUrls>(configuration.GetSection(ServiceUrls.SectionName));
+        services.Configure<GrpcServiceAddresses>(configuration.GetSection(GrpcServiceAddresses.SectionName));
         services.Configure<RabbitMqSettings>(configuration.GetSection(RabbitMqSettings.SectionName));
 
-        var serviceUrls = configuration.GetSection(ServiceUrls.SectionName).Get<ServiceUrls>()
-            ?? new ServiceUrls();
+        var grpcAddresses = configuration.GetSection(GrpcServiceAddresses.SectionName).Get<GrpcServiceAddresses>()
+            ?? new GrpcServiceAddresses();
 
         // Register matching service
         services.AddScoped<IMatchingService, MatchingService>();
@@ -28,20 +28,19 @@ public static class ServiceCollectionExtensions
         // Register event publisher
         services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
 
-        // Register HTTP clients for external services
-        services.AddHttpClient<IProfileClient, ProfileClient>(client =>
-            {
-                client.BaseAddress = new Uri(serviceUrls.ProfileService);
-                client.DefaultRequestHeaders.Add("Accept", "application/json");
-            })
-            .AddPolicyHandler(GetRetryPolicy());
+        // Register gRPC clients
+        services.AddGrpcClient<ProfileGrpc.ProfileGrpcClient>(o =>
+        {
+            o.Address = new Uri(grpcAddresses.ProfileService);
+        });
 
-        services.AddHttpClient<IJobsClient, JobsClient>(client =>
-            {
-                client.BaseAddress = new Uri(serviceUrls.JobsService);
-                client.DefaultRequestHeaders.Add("Accept", "application/json");
-            })
-            .AddPolicyHandler(GetRetryPolicy());
+        services.AddGrpcClient<JobsGrpc.JobsGrpcClient>(o =>
+        {
+            o.Address = new Uri(grpcAddresses.JobsService);
+        });
+
+        services.AddScoped<IProfileClient, ProfileClient>();
+        services.AddScoped<IJobsClient, JobsClient>();
 
         // Add memory cache for caching profile/job data
         services.AddMemoryCache();
@@ -75,13 +74,5 @@ public static class ServiceCollectionExtensions
         services.AddAuthorization();
 
         return services;
-    }
-
-    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .WaitAndRetryAsync(3, retryAttempt =>
-                TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 }

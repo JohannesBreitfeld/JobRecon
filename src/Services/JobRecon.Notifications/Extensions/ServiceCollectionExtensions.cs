@@ -4,11 +4,10 @@ using JobRecon.Notifications.Configuration;
 using JobRecon.Notifications.Contracts;
 using JobRecon.Notifications.Infrastructure;
 using JobRecon.Notifications.Services;
+using JobRecon.Protos.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Polly;
-using Polly.Extensions.Http;
 using System.Text;
 
 namespace JobRecon.Notifications.Extensions;
@@ -34,12 +33,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IDigestService, DigestService>();
 
-        // Profile client for getting user emails
-        services.AddHttpClient<IProfileClient, ProfileClient>(client =>
+        // Identity gRPC client for getting user emails
+        var identityGrpcAddress = configuration["GrpcServices:IdentityService"] ?? "http://localhost:5011";
+        services.AddGrpcClient<IdentityGrpc.IdentityGrpcClient>(o =>
         {
-            var baseUrl = configuration["ProfileService:BaseUrl"] ?? "http://localhost:5002";
-            client.BaseAddress = new Uri(baseUrl);
-        }).AddPolicyHandler(GetRetryPolicy());
+            o.Address = new Uri(identityGrpcAddress);
+        });
+        services.AddScoped<IProfileClient, ProfileClient>();
 
         // RabbitMQ consumer as hosted service
         services.AddHostedService<JobMatchEventConsumer>();
@@ -97,13 +97,5 @@ public static class ServiceCollectionExtensions
         services.AddAuthorization();
 
         return services;
-    }
-
-    private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
-    {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .WaitAndRetryAsync(3, retryAttempt =>
-                TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 }

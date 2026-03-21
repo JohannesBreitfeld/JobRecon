@@ -1,43 +1,27 @@
-using System.Net.Http.Json;
 using JobRecon.Matching.Contracts;
+using JobRecon.Protos.Jobs;
 
 namespace JobRecon.Matching.Services;
 
-public sealed class JobsClient : IJobsClient
+public sealed class JobsClient(
+    JobsGrpc.JobsGrpcClient grpcClient,
+    ILogger<JobsClient> logger) : IJobsClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<JobsClient> _logger;
-
-    public JobsClient(HttpClient httpClient, ILogger<JobsClient> logger)
-    {
-        _httpClient = httpClient;
-        _logger = logger;
-    }
-
     public async Task<JobListDto?> GetActiveJobsAsync(int limit, int offset, CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _httpClient.GetAsync(
-                $"/api/jobs?pageSize={limit}&page={offset / limit + 1}&status=Active",
-                cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Failed to get jobs: {StatusCode}", response.StatusCode);
-                return null;
-            }
-
-            var jobsResponse = await response.Content.ReadFromJsonAsync<JobsApiResponse>(cancellationToken);
-            if (jobsResponse == null) return null;
+            var response = await grpcClient.GetActiveJobsAsync(
+                new GetActiveJobsRequest { Limit = limit, Offset = offset },
+                cancellationToken: cancellationToken);
 
             return new JobListDto(
-                jobsResponse.Jobs.Select(MapToJobDto).ToList(),
-                jobsResponse.TotalCount);
+                response.Jobs.Select(MapToJobDto).ToList(),
+                response.TotalCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting jobs");
+            logger.LogError(ex, "Error getting active jobs via gRPC");
             return null;
         }
     }
@@ -46,79 +30,47 @@ public sealed class JobsClient : IJobsClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/jobs/{jobId}", cancellationToken);
+            var response = await grpcClient.GetJobAsync(
+                new GetJobRequest { JobId = jobId.ToString() },
+                cancellationToken: cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
+            if (response.Job is null)
             {
-                _logger.LogWarning("Failed to get job {JobId}: {StatusCode}", jobId, response.StatusCode);
+                logger.LogWarning("Job {JobId} not found", jobId);
                 return null;
             }
 
-            var jobResponse = await response.Content.ReadFromJsonAsync<JobApiResponse>(cancellationToken);
-            if (jobResponse == null) return null;
-
-            return MapToJobDto(jobResponse);
+            return MapToJobDto(response.Job);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting job {JobId}", jobId);
+            logger.LogError(ex, "Error getting job {JobId} via gRPC", jobId);
             return null;
         }
     }
 
-    private static JobDto MapToJobDto(JobApiResponse response)
+    private static JobDto MapToJobDto(JobMessage msg)
     {
         return new JobDto(
-            response.Id,
-            response.Title,
-            response.Description,
-            response.Location,
-            response.WorkLocationType,
-            response.EmploymentType,
-            response.SalaryMin,
-            response.SalaryMax,
-            response.SalaryCurrency,
-            response.RequiredSkills,
-            response.ExperienceYearsMin,
-            response.ExperienceYearsMax,
-            response.PostedAt,
-            response.ExternalUrl,
+            Guid.Parse(msg.Id),
+            msg.Title,
+            msg.HasDescription ? msg.Description : null,
+            msg.HasLocation ? msg.Location : null,
+            msg.HasWorkLocationType ? msg.WorkLocationType : null,
+            msg.HasEmploymentType ? msg.EmploymentType : null,
+            msg.HasSalaryMin ? (decimal)msg.SalaryMin : null,
+            msg.HasSalaryMax ? (decimal)msg.SalaryMax : null,
+            msg.HasSalaryCurrency ? msg.SalaryCurrency : null,
+            msg.HasRequiredSkills ? msg.RequiredSkills : null,
+            msg.HasExperienceYearsMin ? msg.ExperienceYearsMin : null,
+            msg.HasExperienceYearsMax ? msg.ExperienceYearsMax : null,
+            msg.PostedAt?.ToDateTime(),
+            msg.HasExternalUrl ? msg.ExternalUrl : null,
             new CompanyDto(
-                response.Company?.Id ?? Guid.Empty,
-                response.Company?.Name ?? "Unknown",
-                response.Company?.LogoUrl,
-                response.Company?.Industry),
-            response.Tags ?? []);
+                Guid.Parse(msg.Company.Id),
+                msg.Company.Name,
+                msg.Company.HasLogoUrl ? msg.Company.LogoUrl : null,
+                msg.Company.HasIndustry ? msg.Company.Industry : null),
+            msg.Tags.ToList());
     }
-
-    // Internal models matching Jobs API response
-    private sealed record JobsApiResponse(
-        List<JobApiResponse> Jobs,
-        int TotalCount,
-        int Page,
-        int PageSize);
-
-    private sealed record JobApiResponse(
-        Guid Id,
-        string Title,
-        string? Description,
-        string? Location,
-        string? WorkLocationType,
-        string? EmploymentType,
-        decimal? SalaryMin,
-        decimal? SalaryMax,
-        string? SalaryCurrency,
-        string? RequiredSkills,
-        int? ExperienceYearsMin,
-        int? ExperienceYearsMax,
-        DateTime? PostedAt,
-        string? ExternalUrl,
-        CompanyApiResponse? Company,
-        List<string>? Tags);
-
-    private sealed record CompanyApiResponse(
-        Guid Id,
-        string Name,
-        string? LogoUrl,
-        string? Industry);
 }

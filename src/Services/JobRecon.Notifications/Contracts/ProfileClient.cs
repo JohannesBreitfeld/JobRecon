@@ -1,3 +1,6 @@
+using Grpc.Core;
+using JobRecon.Protos.Identity;
+
 namespace JobRecon.Notifications.Contracts;
 
 public interface IProfileClient
@@ -7,35 +10,30 @@ public interface IProfileClient
 
 public record UserEmailDto(string Email, string? DisplayName);
 
-public class ProfileClient : IProfileClient
+public sealed class ProfileClient(
+    IdentityGrpc.IdentityGrpcClient grpcClient,
+    ILogger<ProfileClient> logger) : IProfileClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<ProfileClient> _logger;
-
-    public ProfileClient(HttpClient httpClient, ILogger<ProfileClient> logger)
-    {
-        _httpClient = httpClient;
-        _logger = logger;
-    }
-
     public async Task<UserEmailDto?> GetUserEmailAsync(Guid userId, CancellationToken ct = default)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/profile/{userId}/email", ct);
+            var response = await grpcClient.GetUserEmailAsync(
+                new GetUserEmailRequest { UserId = userId.ToString() },
+                cancellationToken: ct);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Failed to get email for user {UserId}: {StatusCode}",
-                    userId, response.StatusCode);
-                return null;
-            }
-
-            return await response.Content.ReadFromJsonAsync<UserEmailDto>(ct);
+            return new UserEmailDto(
+                response.Email,
+                response.HasDisplayName ? response.DisplayName : null);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
+        {
+            logger.LogWarning("User not found for {UserId}", userId);
+            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting email for user {UserId}", userId);
+            logger.LogError(ex, "Error getting email for user {UserId} via gRPC", userId);
             return null;
         }
     }

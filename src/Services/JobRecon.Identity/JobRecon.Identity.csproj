@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Grpc.AspNetCore" Version="2.71.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
     <PackageReference Include="NSwag.AspNetCore" Version="14.6.3" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.5" />
@@ -28,6 +29,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\JobRecon.Infrastructure\JobRecon.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Shared\JobRecon.Protos\JobRecon.Protos.csproj" />
   </ItemGroup>
 
 </Project>

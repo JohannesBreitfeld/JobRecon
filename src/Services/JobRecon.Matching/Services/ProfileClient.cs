@@ -1,96 +1,64 @@
-using System.Net.Http.Json;
 using JobRecon.Matching.Contracts;
+using JobRecon.Protos.Profile;
 
 namespace JobRecon.Matching.Services;
 
-public sealed class ProfileClient : IProfileClient
+public sealed class ProfileClient(
+    ProfileGrpc.ProfileGrpcClient grpcClient,
+    ILogger<ProfileClient> logger) : IProfileClient
 {
-    private readonly HttpClient _httpClient;
-    private readonly ILogger<ProfileClient> _logger;
-
-    public ProfileClient(HttpClient httpClient, ILogger<ProfileClient> logger)
-    {
-        _httpClient = httpClient;
-        _logger = logger;
-    }
-
     public async Task<ProfileDto?> GetProfileAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/profile/{userId}", cancellationToken);
+            var response = await grpcClient.GetProfileAsync(
+                new GetProfileRequest { UserId = userId.ToString() },
+                cancellationToken: cancellationToken);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("Failed to get profile for user {UserId}: {StatusCode}",
-                    userId, response.StatusCode);
-                return null;
-            }
-
-            var profileResponse = await response.Content.ReadFromJsonAsync<ProfileApiResponse>(cancellationToken);
-            if (profileResponse == null) return null;
-
-            return MapToProfileDto(profileResponse);
+            return MapToProfileDto(response);
+        }
+        catch (Grpc.Core.RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.NotFound)
+        {
+            logger.LogWarning("Profile not found for user {UserId}", userId);
+            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting profile for user {UserId}", userId);
+            logger.LogError(ex, "Error getting profile for user {UserId} via gRPC", userId);
             return null;
         }
     }
 
-    private static ProfileDto MapToProfileDto(ProfileApiResponse response)
+    private static ProfileDto MapToProfileDto(ProfileResponse response)
     {
         return new ProfileDto(
-            response.UserId,
-            response.CurrentJobTitle,
-            response.Summary,
-            response.Location,
-            response.YearsOfExperience,
-            response.Skills?.Select(s => new SkillDto(s.Name, s.Level, s.YearsOfExperience)).ToList() ?? [],
-            response.DesiredJobTitles?.Select(t => new DesiredJobTitleDto(t.Title, t.Priority)).ToList() ?? [],
-            response.Preferences != null ? new JobPreferenceDto(
-                response.Preferences.MinSalary,
-                response.Preferences.MaxSalary,
-                response.Preferences.PreferredLocations,
-                response.Preferences.IsRemotePreferred,
-                response.Preferences.IsHybridAccepted,
-                response.Preferences.IsOnSiteAccepted,
-                response.Preferences.PreferredEmploymentTypes,
-                response.Preferences.PreferredIndustries,
-                response.Preferences.ExcludedCompanies,
-                response.Preferences.IsActivelyLooking) : null);
+            Guid.Parse(response.UserId),
+            response.HasCurrentJobTitle ? response.CurrentJobTitle : null,
+            response.HasSummary ? response.Summary : null,
+            response.HasLocation ? response.Location : null,
+            response.HasYearsOfExperience ? response.YearsOfExperience : null,
+            response.Skills.Select(s => new SkillDto(
+                s.Name,
+                s.Level,
+                s.HasYearsOfExperience ? s.YearsOfExperience : null)).ToList(),
+            response.DesiredJobTitles.Select(t => new DesiredJobTitleDto(
+                t.Title,
+                t.Priority)).ToList(),
+            response.Preferences is not null ? MapPreferences(response.Preferences) : null);
     }
 
-    // Internal models matching Profile API response
-    private sealed record ProfileApiResponse(
-        Guid UserId,
-        string? CurrentJobTitle,
-        string? Summary,
-        string? Location,
-        int? YearsOfExperience,
-        List<SkillApiResponse>? Skills,
-        List<DesiredJobTitleApiResponse>? DesiredJobTitles,
-        JobPreferenceApiResponse? Preferences);
-
-    private sealed record SkillApiResponse(
-        string Name,
-        string Level,
-        int? YearsOfExperience);
-
-    private sealed record DesiredJobTitleApiResponse(
-        string Title,
-        int Priority);
-
-    private sealed record JobPreferenceApiResponse(
-        decimal? MinSalary,
-        decimal? MaxSalary,
-        string? PreferredLocations,
-        bool IsRemotePreferred,
-        bool IsHybridAccepted,
-        bool IsOnSiteAccepted,
-        string? PreferredEmploymentTypes,
-        string? PreferredIndustries,
-        string? ExcludedCompanies,
-        bool IsActivelyLooking);
+    private static JobPreferenceDto MapPreferences(JobPreferenceMessage pref)
+    {
+        return new JobPreferenceDto(
+            pref.HasMinSalary ? (decimal)pref.MinSalary : null,
+            pref.HasMaxSalary ? (decimal)pref.MaxSalary : null,
+            pref.HasPreferredLocations ? pref.PreferredLocations : null,
+            pref.IsRemotePreferred,
+            pref.IsHybridAccepted,
+            pref.IsOnSiteAccepted,
+            pref.HasPreferredEmploymentTypes ? pref.PreferredEmploymentTypes : null,
+            pref.HasPreferredIndustries ? pref.PreferredIndustries : null,
+            pref.HasExcludedCompanies ? pref.ExcludedCompanies : null,
+            pref.IsActivelyLooking);
+    }
 }
