@@ -4,7 +4,7 @@
 
 ---
 
-## Phase 0: Project Foundation ✅
+## Phase 1: Foundation & Identity ✅
 
 ### Infrastructure Setup
 - [x] Create solution structure (JobRecon.slnx)
@@ -19,41 +19,6 @@
 - [x] Create JobRecon.Contracts project
 - [x] Create JobRecon.Domain project
 - [x] Create JobRecon.Infrastructure project
-
-### Service Scaffolds
-- [x] Create JobRecon.Identity service project
-- [x] Create JobRecon.Profile service project
-- [x] Create JobRecon.Gateway project (YARP)
-
-### Frontend Scaffold
-- [x] Create React + TypeScript + Vite project
-- [x] Configure MUI theme
-- [x] Configure TanStack Query
-- [x] Configure React Router
-- [x] Configure Zustand
-- [x] Configure Vitest for testing
-- [x] Configure ESLint
-
-### Deployment Infrastructure
-- [x] Create docker-compose.yml for local infrastructure
-- [x] Create .env.example
-- [x] Create Helm chart structure
-- [x] Create Helm templates for all services
-- [x] Create Kustomize base manifests
-- [x] Create Kustomize overlays (local, production)
-- [x] Create ArgoCD application manifest
-- [x] Create Dockerfiles for all services
-
-### CI/CD
-- [x] Create GitHub Actions CI workflow
-- [x] Create GitHub Actions Docker build workflow
-- [x] Create GitHub Actions migrations workflow
-- [x] Create Dependabot configuration
-- [x] Create CODEOWNERS file
-
----
-
-## Phase 1: Identity & Core Infrastructure
 
 ### Identity Service - Domain
 - [x] Create User entity
@@ -75,9 +40,6 @@
 - [x] POST /api/auth/login
 - [x] POST /api/auth/refresh
 - [x] POST /api/auth/logout
-- [ ] POST /api/auth/forgot-password
-- [ ] POST /api/auth/reset-password
-- [ ] GET /api/auth/verify-email
 - [x] Configure NSwag/OpenAPI
 - [x] Add health check endpoints
 
@@ -85,8 +47,6 @@
 - [x] Unit tests for token generation
 - [x] Unit tests for password validation
 - [x] Unit tests for RefreshToken domain entity
-- [ ] Integration tests for auth endpoints
-- [ ] Integration tests for refresh token flow
 
 ### API Gateway
 - [x] Configure YARP routes
@@ -101,277 +61,193 @@
 - [x] Create auth store (Zustand)
 - [x] Create Login page
 - [x] Create Register page
-- [ ] Create Forgot Password page
 - [x] Create Layout with Navbar
 - [x] Implement token refresh interceptor
 - [x] Create protected route wrapper
-- [ ] Create role-based auth guards
 
 ### Frontend - Authentication Tests
 - [x] Unit tests for auth store
 - [x] Unit tests for LoginForm
 - [x] Unit tests for RegisterForm
 
+### Deployment Infrastructure
+- [x] Create docker-compose.yml for local infrastructure
+- [x] Create .env.example
+- [x] Create Helm chart structure
+- [x] Create Helm templates for all services
+- [x] Create Kustomize base manifests
+- [x] Create Kustomize overlays (local, production)
+- [x] Create ArgoCD application manifest
+- [x] Create Dockerfiles for all services
+
+### CI/CD
+- [x] Create GitHub Actions CI workflow
+- [x] Create GitHub Actions Docker build workflow
+- [x] Create GitHub Actions migrations workflow
+- [x] Create Dependabot configuration
+- [x] Create CODEOWNERS file
+
 ---
 
-## Phase 2: Profile Service
+## Phase 2: Profile Management ✅
 
-### Profile Service - Domain
-- [ ] Create UserProfile entity
-- [ ] Create Skill entity
-- [ ] Create JobPreference entity
-- [ ] Create CVDocument entity
-- [ ] Define domain events (ProfileUpdated, CVUploaded, etc.)
+### Profile Service
+- [x] Create JobRecon.Profile service project
+- [x] Create Profile domain entities
+- [x] Create Profile DbContext and migrations
+- [x] Create Profile CRUD API endpoints
+- [x] Configure NSwag/OpenAPI
+- [x] Add health check endpoints
 
-### Profile Service - Infrastructure
-- [ ] Create Profile DbContext
+### Frontend - Profile
+- [x] Create profile API client
+- [x] Create profile store
+- [x] Create Profile pages
+
+---
+
+## Phase 3: Job Aggregation & Crawlers ✅
+
+### Jobs Service
+- [x] Create JobRecon.Jobs service project
+- [x] Implement JobTech Links daily file downloads
+- [x] Configure MongoDB for job document storage
+- [x] Implement job normalization pipeline
+- [x] Implement deduplication
+- [x] Create job query API endpoints
+- [x] Configure NSwag/OpenAPI
+
+### Frontend - Jobs
+- [x] Create jobs API client
+- [x] Create Job Search page
+- [x] Create Job detail page
+
+---
+
+## Phase 4: Matching & AI Pipeline ✅
+
+### Matching Service
+- [x] Create JobRecon.Matching service project
+- [x] Configure Ollama client (Mistral 7B, nomic-embed-text)
+- [x] Configure Qdrant vector database
+- [x] Implement embedding generation
+- [x] Implement vector similarity search
+- [x] Implement LLM-based match evaluation
+- [x] Implement metadata scoring
+- [x] Create match query API endpoints
+- [x] Configure NSwag/OpenAPI
+
+### Frontend - Matches
+- [x] Create matches API client
+- [x] Create Matches page
+
+---
+
+## Phase 5: Notifications & Alerts ✅
+
+### Notification Service
+- [x] Create JobRecon.Notifications service project
+- [x] Create Notification domain entities
+- [x] Create Notification DbContext
+- [x] Configure email provider
+- [x] Implement notification preferences
+- [x] Implement digest batching
+- [x] Create notification API endpoints
+- [x] Configure NSwag/OpenAPI
+
+### Frontend - Notifications
+- [x] Create notifications API client
+- [x] Create Notifications page
+
+---
+
+## Phase 6: Application Tracking ⬅️ Current
+
+### Applications Service - Domain
+- [ ] Create Application entity (with cached job data)
+- [ ] Create Interview entity
+- [ ] Create ApplicationActivity entity
+- [ ] Create ApplicationContact entity
+- [ ] Create ApplicationReminder entity
+- [ ] Define enums (ApplicationStatus, InterviewType, ContactRole, etc.)
+
+### Applications Service - Infrastructure
+- [ ] Create JobRecon.Applications project (port 5007)
+- [ ] Create ApplicationsDbContext (schema: "applications")
 - [ ] Create EF Core migrations
-- [ ] Configure MinIO/S3 client for CV storage
-- [ ] Implement file upload service
-- [ ] Configure MassTransit
+- [ ] Configure Hangfire for reminder processing
+- [ ] Configure RabbitMQ event publishing
 
-### Profile Service - API
-- [ ] GET /api/profiles/me
-- [ ] PUT /api/profiles/me
-- [ ] POST /api/profiles/me/skills
-- [ ] DELETE /api/profiles/me/skills/{id}
-- [ ] GET /api/profiles/me/preferences
-- [ ] PUT /api/profiles/me/preferences
-- [ ] POST /api/profiles/me/cv
-- [ ] GET /api/profiles/me/cv
-- [ ] DELETE /api/profiles/me/cv/{id}
+### Applications Service - API
+- [ ] GET /api/applications (list with filters)
+- [ ] GET /api/applications/stats (analytics)
+- [ ] GET /api/applications/{id} (details)
+- [ ] POST /api/applications (create)
+- [ ] PUT /api/applications/{id} (update)
+- [ ] PUT /api/applications/{id}/status (status change)
+- [ ] DELETE /api/applications/{id}
+- [ ] POST /api/applications/{appId}/interviews (schedule)
+- [ ] PUT /api/applications/interviews/{id} (update)
+- [ ] DELETE /api/applications/interviews/{id} (cancel)
+- [ ] GET /api/applications/interviews/upcoming
+- [ ] POST /api/applications/{appId}/contacts (add)
+- [ ] PUT /api/applications/contacts/{id} (update)
+- [ ] DELETE /api/applications/contacts/{id}
+- [ ] GET /api/applications/reminders (pending)
+- [ ] POST /api/applications/{appId}/reminders (create)
+- [ ] POST /api/applications/reminders/{id}/complete
+- [ ] DELETE /api/applications/reminders/{id}
 - [ ] Configure NSwag/OpenAPI
 - [ ] Add health check endpoints
 
-### Profile Service - Events
-- [ ] Publish ProfileUpdated event
-- [ ] Publish CVUploaded event
-- [ ] Publish PreferencesChanged event
+### Applications Service - Services
+- [ ] IApplicationService / ApplicationService
+- [ ] IInterviewService / InterviewService
+- [ ] IContactService / ContactService
+- [ ] IReminderService / ReminderService
+- [ ] IEventPublisher / RabbitMqEventPublisher
 
-### Profile Service - Tests
-- [ ] Unit tests for profile validation
-- [ ] Unit tests for skill management
-- [ ] Integration tests for profile CRUD
-- [ ] Integration tests for CV upload
+### Applications Service - Integration
+- [ ] IJobsClient / JobsClient (fetch job details)
+- [ ] Update Gateway routing (port 5007)
+- [ ] Update docker-compose.yml
+- [ ] Add to JobRecon.slnx
+- [ ] Create Dockerfile
 
-### Frontend - Profile
-- [ ] Create profile API client
-- [ ] Create profile store
-- [ ] Create Profile page
-- [ ] Create Edit Profile form
-- [ ] Create Skills management component
-- [ ] Create Job Preferences form
-- [ ] Create CV upload component
-- [ ] Create CV viewer component
+### Applications Service - Tests
+- [ ] Unit tests for ApplicationService
+- [ ] Unit tests for InterviewService
+- [ ] Unit tests for ReminderService
 
----
-
-## Phase 3: Job Crawler System
-
-### Crawler Orchestrator - Domain
-- [ ] Create CrawlerSource entity
-- [ ] Create CrawlJob entity
-- [ ] Create CrawlSchedule entity
-- [ ] Define crawler configuration model
-
-### Crawler Orchestrator - Infrastructure
-- [ ] Create Crawler DbContext
-- [ ] Create EF Core migrations
-- [ ] Configure Quartz.NET scheduler
-- [ ] Implement scheduler service
-
-### Crawler Orchestrator - API (Admin)
-- [ ] GET /api/admin/sources
-- [ ] POST /api/admin/sources
-- [ ] PUT /api/admin/sources/{id}
-- [ ] DELETE /api/admin/sources/{id}
-- [ ] GET /api/admin/jobs
-- [ ] POST /api/admin/jobs/{id}/trigger
-- [ ] GET /api/admin/jobs/{id}/status
-
-### Crawler Workers
-- [ ] Create worker project
-- [ ] Implement HTTP fetcher with Polly
-- [ ] Implement HTML parser (AngleSharp)
-- [ ] Create extractor strategy pattern
-- [ ] Implement Indeed extractor
-- [ ] Implement LinkedIn extractor (if possible)
-- [ ] Implement generic job board extractor
-- [ ] Publish RawJobDiscovered events
-
-### Crawler - Tests
-- [ ] Unit tests for extractors
-- [ ] Unit tests for scheduler
-- [ ] Integration tests with mock HTML
+### Frontend - Applications
+- [ ] Create applications API client
+- [ ] Create applications store
+- [ ] Create Applications list page
+- [ ] Create Application detail page
+- [ ] Create Application form
+- [ ] Create Interview scheduling component
+- [ ] Create Contact management component
+- [ ] Create Reminder component
+- [ ] Create Application analytics/stats view
 
 ---
 
-## Phase 4: Job Processing & Storage
+## Phase 7: External Identity Providers
 
-### Job Processor Service - Domain
-- [ ] Create Job entity (MongoDB document)
-- [ ] Create JobSource entity
-- [ ] Define normalization rules
-- [ ] Define deduplication strategy
+### Identity Provider Integration
+- [ ] Implement Google OAuth
+- [ ] Implement GitHub OAuth
+- [ ] Implement EntraID integration
+- [ ] Create provider-agnostic auth abstraction layer
+- [ ] Implement account linking
 
-### Job Processor Service - Infrastructure
-- [ ] Configure MongoDB client
-- [ ] Create MongoDB indexes
-- [ ] Implement content hash generation
-- [ ] Implement fuzzy matching for deduplication
-
-### Job Processor Service - Consumers
-- [ ] Consume RawJobDiscovered events
-- [ ] Implement normalization pipeline
-- [ ] Implement salary parsing
-- [ ] Implement location geocoding
-- [ ] Publish JobNormalized events
-- [ ] Publish JobDeduplicated events
-
-### Job Processor - Tests
-- [ ] Unit tests for normalization
-- [ ] Unit tests for deduplication
-- [ ] Unit tests for salary parsing
-- [ ] Integration tests with MongoDB
+### Frontend - OIDC
+- [ ] Integrate MSAL.js or oidc-client
+- [ ] Add social login buttons to Login/Register pages
 
 ---
 
-## Phase 5: AI Pipeline
-
-### AI Pipeline Service - Infrastructure
-- [ ] Configure Ollama client
-- [ ] Create embedding generation service
-- [ ] Create CV parsing service
-- [ ] Implement batch processing queue
-- [ ] Configure model management
-
-### AI Pipeline Service - Consumers
-- [ ] Consume CVUploaded events
-- [ ] Consume JobNormalized events
-- [ ] Consume ProfileUpdated events
-- [ ] Generate embeddings (nomic-embed-text)
-- [ ] Parse CV content (Mistral 7B)
-- [ ] Publish EmbeddingGenerated events
-- [ ] Publish CVParsed events
-
-### AI Pipeline - Tests
-- [ ] Unit tests for embedding service
-- [ ] Unit tests for CV parser
-- [ ] Integration tests with Ollama
-
----
-
-## Phase 6: Vector Search & Matching
-
-### Vector Indexer Service
-- [ ] Configure Qdrant client
-- [ ] Create collection schemas
-- [ ] Implement vector ingestion
-- [ ] Implement hybrid search
-- [ ] Consume EmbeddingGenerated events
-
-### Match Evaluator Service - Domain
-- [ ] Create Match entity
-- [ ] Create MatchScore entity
-- [ ] Define scoring algorithm
-
-### Match Evaluator Service - Infrastructure
-- [ ] Create Match DbContext
-- [ ] Configure Qdrant client
-- [ ] Configure Ollama client for LLM evaluation
-
-### Match Evaluator Service - Logic
-- [ ] Implement vector similarity search
-- [ ] Implement metadata filtering
-- [ ] Implement LLM-based evaluation
-- [ ] Implement score aggregation
-- [ ] Implement match persistence
-
-### Match Evaluator - Consumers
-- [ ] Consume JobNormalized events
-- [ ] Consume ProfileUpdated events
-- [ ] Publish MatchFound events
-- [ ] Publish MatchScoreUpdated events
-
-### Match Evaluator - Tests
-- [ ] Unit tests for scoring algorithm
-- [ ] Unit tests for filtering
-- [ ] Integration tests with Qdrant
-
----
-
-## Phase 7: Job Query Service (CQRS Read Side)
-
-### Job Query Service - Infrastructure
-- [ ] Create read model projections
-- [ ] Configure full-text search
-- [ ] Implement faceted filtering
-- [ ] Implement pagination
-
-### Job Query Service - API
-- [ ] GET /api/jobs (search with filters)
-- [ ] GET /api/jobs/{id}
-- [ ] GET /api/jobs/recommended
-- [ ] GET /api/matches
-- [ ] GET /api/matches/{id}
-- [ ] Configure NSwag/OpenAPI
-
-### Job Query - Tests
-- [ ] Unit tests for search logic
-- [ ] Integration tests for API
-
-### Frontend - Jobs
-- [ ] Create jobs API client
-- [ ] Create jobs store
-- [ ] Create Job Search page
-- [ ] Create Job filters component
-- [ ] Create Job card component
-- [ ] Create Job detail page
-- [ ] Create Matches page
-- [ ] Create Match card component
-
----
-
-## Phase 8: Notifications
-
-### Notification Service - Domain
-- [ ] Create Notification entity
-- [ ] Create NotificationTemplate entity
-- [ ] Create NotificationPreference entity
-
-### Notification Service - Infrastructure
-- [ ] Create Notification DbContext
-- [ ] Configure email provider (SMTP/SendGrid)
-- [ ] Implement Razor email templates
-- [ ] Implement delivery tracking
-
-### Notification Service - Consumers
-- [ ] Consume MatchFound events
-- [ ] Implement immediate notifications
-- [ ] Implement digest batching
-- [ ] Implement notification preferences
-
-### Notification Service - API
-- [ ] GET /api/notifications
-- [ ] PUT /api/notifications/{id}/read
-- [ ] GET /api/notifications/preferences
-- [ ] PUT /api/notifications/preferences
-
-### Notification - Tests
-- [ ] Unit tests for template rendering
-- [ ] Unit tests for batching logic
-- [ ] Integration tests with mock SMTP
-
-### Frontend - Notifications
-- [ ] Create notifications API client
-- [ ] Create notifications store
-- [ ] Create Notifications dropdown
-- [ ] Create Notifications page
-- [ ] Create Notification preferences form
-
----
-
-## Phase 9: Observability & Operations
+## Phase 8: Observability & Operations
 
 ### Logging
 - [ ] Configure Serilog for all services
@@ -397,7 +273,7 @@
 
 ---
 
-## Phase 10: Security Hardening
+## Phase 9: Security Hardening
 
 ### API Security
 - [ ] Implement API versioning
@@ -412,15 +288,9 @@
 - [ ] Configure TLS for all internal communication
 - [ ] Implement data retention policies
 
-### External Identity Providers
-- [ ] Implement Google OAuth
-- [ ] Implement GitHub OAuth
-- [ ] Implement EntraID integration
-- [ ] Implement account linking
-
 ---
 
-## Phase 11: Performance & Scaling
+## Phase 10: Performance & Scaling
 
 ### Caching
 - [ ] Implement Redis caching layer
@@ -441,7 +311,7 @@
 
 ---
 
-## Phase 12: Production Readiness
+## Phase 11: Production Readiness
 
 ### Documentation
 - [ ] Complete API documentation
@@ -466,12 +336,19 @@
 ## Backlog / Future Enhancements
 
 ### Features
+- [ ] POST /api/auth/forgot-password
+- [ ] POST /api/auth/reset-password
+- [ ] GET /api/auth/verify-email
+- [ ] Create Forgot Password page (frontend)
+- [ ] Create role-based auth guards (frontend)
+- [ ] Integration tests for auth endpoints
+- [ ] Integration tests for refresh token flow
 - [ ] Real-time notifications (SignalR/WebSockets)
-- [ ] Job application tracking
-- [ ] Interview scheduling
 - [ ] Company profiles and reviews
 - [ ] Salary insights
 - [ ] Career path recommendations
+- [ ] Additional job crawlers (3-5 sources)
+- [ ] Advanced job search filters
 
 ### Technical Improvements
 - [ ] GraphQL API option
@@ -486,20 +363,18 @@
 
 | Phase | Status | Progress |
 |-------|--------|----------|
-| Phase 0: Foundation | ✅ Complete | 100% |
-| Phase 1: Identity | 🔄 In Progress | 85% |
-| Phase 2: Profile | 🔲 Not Started | 0% |
-| Phase 3: Crawler | 🔲 Not Started | 0% |
-| Phase 4: Job Processing | 🔲 Not Started | 0% |
-| Phase 5: AI Pipeline | 🔲 Not Started | 0% |
-| Phase 6: Matching | 🔲 Not Started | 0% |
-| Phase 7: Job Query | 🔲 Not Started | 0% |
-| Phase 8: Notifications | 🔲 Not Started | 0% |
-| Phase 9: Observability | 🔲 Not Started | 0% |
-| Phase 10: Security | 🔲 Not Started | 0% |
-| Phase 11: Performance | 🔲 Not Started | 0% |
-| Phase 12: Production | 🔲 Not Started | 0% |
+| Phase 1: Foundation & Identity | ✅ Complete | 100% |
+| Phase 2: Profile Management | ✅ Complete | 100% |
+| Phase 3: Job Aggregation & Crawlers | ✅ Complete | 100% |
+| Phase 4: Matching & AI Pipeline | ✅ Complete | 100% |
+| Phase 5: Notifications & Alerts | ✅ Complete | 100% |
+| Phase 6: Application Tracking | ⬅️ Current | 0% |
+| Phase 7: External Identity Providers | 🔲 Planned | 0% |
+| Phase 8: Observability & Operations | 🔲 Planned | 0% |
+| Phase 9: Security Hardening | 🔲 Planned | 0% |
+| Phase 10: Performance & Scaling | 🔲 Planned | 0% |
+| Phase 11: Production Readiness | 🔲 Planned | 0% |
 
 ---
 
-*Last updated: 2026-03-18*
+*Last updated: 2026-03-21*

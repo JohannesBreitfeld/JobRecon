@@ -1797,7 +1797,7 @@ echo "⚠️  Remember to update any external integrations."
 
 ## 11. Suggested Development Phases
 
-### Phase 1: Foundation
+### Phase 1: Foundation & Identity ✅
 
 **Goal:** Core infrastructure, authentication, and frontend scaffolding
 
@@ -1827,7 +1827,7 @@ echo "⚠️  Remember to update any external integrations."
 
 ---
 
-### Phase 2: Profile Management
+### Phase 2: Profile Management ✅
 
 **Goal:** User profiles and CV handling
 
@@ -1848,70 +1848,52 @@ echo "⚠️  Remember to update any external integrations."
 
 ---
 
-### Phase 3: Job Crawler Infrastructure
+### Phase 3: Job Aggregation & Crawlers ✅
 
 **Goal:** Automated job discovery
 
 | Deliverable | Description |
 |-------------|-------------|
-| Crawler Orchestrator | Quartz.NET scheduler |
-| First extractor | LinkedIn or Indeed |
+| JobTech Links integration | Daily file downloads for Swedish jobs |
 | Job Processor | Normalization pipeline |
 | MongoDB setup | Job document storage |
 | RabbitMQ setup | Message bus |
 | Deduplication | Content hash-based |
+| Job query API | Search and filter jobs |
 
 **Key Decisions:**
-- Crawler politeness policies
+- JobTech Links as primary Swedish job source
 - Job schema standardization
 - Message retry strategies
 
 ---
 
-### Phase 4: AI Pipeline & Vector Search
+### Phase 4: Matching & AI Pipeline ✅
 
-**Goal:** Semantic matching capability
+**Goal:** Semantic matching and intelligent job recommendations
 
 | Deliverable | Description |
 |-------------|-------------|
 | Ollama deployment | K8s pod with models |
-| AI Pipeline Service | Embedding generation |
+| Embedding generation | nomic-embed-text for vectors |
 | Qdrant setup | Collections and indexing |
-| Profile embeddings | Auto-generate on change |
-| Job embeddings | Batch generation |
-| Vector search | Basic similarity queries |
-
-**Key Decisions:**
-- Embedding model selection
-- Vector dimension and distance metric
-- Batch processing strategy
-
----
-
-### Phase 5: Match Evaluation
-
-**Goal:** Intelligent job matching
-
-| Deliverable | Description |
-|-------------|-------------|
-| Match Evaluator | Full pipeline |
+| Vector similarity search | Profile-to-job matching |
+| Match Evaluator | LLM-based deep analysis |
 | Metadata scoring | Skill/location adjustments |
-| LLM evaluation | Deep match analysis |
 | Match storage | PostgreSQL results |
-| Job Query Service | User match retrieval with OpenAPI |
 | Matches UI | React pages for viewing matches |
 | Generated clients | Match/Query TypeScript clients |
 
 **Key Decisions:**
-- Scoring weights
-- LLM evaluation prompts
-- Threshold defaults
+- Embedding model selection (nomic-embed-text)
+- Scoring weights and thresholds
+- LLM evaluation prompts (Mistral 7B)
 
 ---
 
-### Phase 6: Notifications
+### Phase 5: Notifications & Alerts ✅
 
-**Goal:** User engagement
+**Goal:** User engagement and real-time updates
 
 | Deliverable | Description |
 |-------------|-------------|
@@ -1926,6 +1908,29 @@ echo "⚠️  Remember to update any external integrations."
 - SMTP provider
 - Template engine
 - Digest scheduling
+
+---
+
+### Phase 6: Application Tracking ⬅️ Current
+
+**Goal:** Job application lifecycle management
+
+| Deliverable | Description |
+|-------------|-------------|
+| Applications Service | Full application CRUD (port 5007) |
+| Application timeline | Status tracking with activity history |
+| Interview scheduling | Multiple rounds, types, feedback |
+| Contact management | Recruiters, hiring managers per application |
+| Reminders | Follow-up scheduling with Hangfire |
+| Application analytics | Pipeline metrics and conversion rates |
+| Applications UI | React pages for tracking applications |
+| Gateway routing | Route /api/applications to new service |
+
+**Key Decisions:**
+- Denormalized job data in applications (avoid cross-service calls)
+- Auto activity logging on status changes
+- One application per user per job (unique constraint)
+- Hangfire for reminder processing
 
 ---
 
@@ -1949,54 +1954,95 @@ echo "⚠️  Remember to update any external integrations."
 
 ---
 
-### Phase 8: Production Hardening
+### Phase 8: Observability & Operations
 
-**Goal:** Production readiness
+**Goal:** Production monitoring and operations
 
 | Deliverable | Description |
 |-------------|-------------|
-| Helm charts | All services packaged |
-| Observability stack | Prometheus, Grafana, Loki |
+| Structured logging | Serilog with correlation IDs |
+| Metrics | Prometheus endpoints + Grafana dashboards |
 | Distributed tracing | OpenTelemetry + Jaeger |
-| Health checks | K8s probes |
-| Rate limiting | API gateway config |
-| Security audit | OWASP review |
-| Load testing | K6 or similar |
+| Health checks | K8s liveness/readiness probes |
+| Log aggregation | Loki or ELK stack |
 
 **Key Decisions:**
 - Alerting thresholds
 - SLO definitions
-- Backup strategies
+- Log retention policy
 
 ---
 
-### Phase 9: Scale & Polish
+### Phase 9: Security Hardening
 
-**Goal:** Feature completeness
+**Goal:** Production security
 
 | Deliverable | Description |
 |-------------|-------------|
-| Additional crawlers | 3-5 job sources |
-| Advanced filters | Enhanced job query UI |
-| Application tracking | Track apply status |
-| Analytics dashboard | User engagement metrics |
-| Admin portal | System management (React) |
-| Documentation | API docs, runbooks |
+| API versioning | Versioned endpoints |
+| Request validation | Input sanitization |
+| Security headers | OWASP-compliant headers |
+| Audit logging | Security event tracking |
+| Data encryption | Field-level encryption for PII |
+| TLS | Internal service communication |
+
+**Key Decisions:**
+- Data retention policies
+- Encryption key management
+- Audit log retention
+
+---
+
+### Phase 10: Performance & Scaling
+
+**Goal:** Performance optimization
+
+| Deliverable | Description |
+|-------------|-------------|
+| Redis caching | Caching layer with invalidation |
+| Database optimization | Indexes, connection pooling, read replicas |
+| Load testing | K6 scripts and baselines |
+
+**Key Decisions:**
+- Cache TTL strategies
+- Scaling recommendations
+- Performance baselines
+
+---
+
+### Phase 11: Production Readiness
+
+**Goal:** Production deployment
+
+| Deliverable | Description |
+|-------------|-------------|
+| Helm charts | All services packaged |
+| Azure deployment | Container Apps / AKS templates |
+| Azure Key Vault | Production secrets management |
+| Documentation | API docs, runbooks, deployment guide |
+| Disaster recovery | Backup strategies and failover |
+
+**Key Decisions:**
+- Azure resource sizing
+- Backup strategies
+- Recovery procedures
 
 ---
 
 ### Suggested Timeline Structure
 
 ```
-Phase 1: Foundation              ████████
-Phase 2: Profile Management          ██████
-Phase 3: Job Crawlers                    ████████
-Phase 4: AI Pipeline                         ██████████
-Phase 5: Match Evaluation                          ████████
-Phase 6: Notifications                                   ████
-Phase 7: External Identity                                   ██████
-Phase 8: Production Hardening                                      ██████████
-Phase 9: Scale & Polish                                                    ████████
+Phase 1:  Foundation & Identity      ████████           ✅
+Phase 2:  Profile Management             ██████         ✅
+Phase 3:  Job Aggregation                    ████████    ✅
+Phase 4:  Matching & AI Pipeline                 ██████████  ✅
+Phase 5:  Notifications & Alerts                        ████ ✅
+Phase 6:  Application Tracking                             ██████  ⬅️
+Phase 7:  External Identity                                    ██████
+Phase 8:  Observability                                            ████████
+Phase 9:  Security Hardening                                           ██████
+Phase 10: Performance & Scaling                                            ██████
+Phase 11: Production Readiness                                                 ████████
 
 Sequential phases with overlap where dependencies allow.
 ```
