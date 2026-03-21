@@ -6,7 +6,6 @@ package jobrecon.profile;
 
 service ProfileGrpc {
   rpc GetProfile (GetProfileRequest) returns (ProfileResponse);
-  rpc GetUserEmail (GetUserEmailRequest) returns (UserEmailResponse);
 }
 
 message GetProfileRequest {
@@ -48,11 +47,3 @@ message JobPreferenceMessage {
   bool is_actively_looking = 10;
 }
 
-message GetUserEmailRequest {
-  string user_id = 1;
-}
-
-message UserEmailResponse {
-  string email = 1;
-  optional string display_name = 2;
-}

@@ -1,9 +1,11 @@
 using JobRecon.Profile.Extensions;
+using JobRecon.Profile.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProfileServices(builder.Configuration);
 builder.Services.AddProfileAuthentication(builder.Configuration);
+builder.Services.AddGrpc();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApiDocument(config =>
@@ -18,6 +20,7 @@ var app = builder.Build();
 
 app.ConfigurePipeline();
 app.MapEndpoints();
+app.MapGrpcService<ProfileGrpcService>();
 
 await app.MigrateDatabaseAsync();
 

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option csharp_namespace = "JobRecon.Protos.Identity";
+
+package jobrecon.identity;
+
+service IdentityGrpc {
+  rpc GetUserEmail (GetUserEmailRequest) returns (UserEmailResponse);
+}
+
+message GetUserEmailRequest {
+  string user_id = 1;
+}
+
+message UserEmailResponse {
+  string email = 1;
+  optional string display_name = 2;
+}
