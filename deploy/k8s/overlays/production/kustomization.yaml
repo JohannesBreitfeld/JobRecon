@@ -44,6 +44,12 @@ images:
     newTag: latest
   - name: ghcr.io/jobrecon-profile
     newTag: latest
+  - name: ghcr.io/jobrecon-jobs
+    newTag: latest
+  - name: ghcr.io/jobrecon-matching
+    newTag: latest
+  - name: ghcr.io/jobrecon-notifications
+    newTag: latest
   - name: ghcr.io/jobrecon-gateway
     newTag: latest
   - name: ghcr.io/jobrecon-frontend

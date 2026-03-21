@@ -22,9 +22,19 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            - name: grpc
+              containerPort: 5011
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Production
+            - name: Kestrel__Endpoints__Http__Url
+              value: http://0.0.0.0:8080
+            - name: Kestrel__Endpoints__Http__Protocols
+              value: Http1AndHttp2
+            - name: Kestrel__Endpoints__Grpc__Url
+              value: http://0.0.0.0:5011
+            - name: Kestrel__Endpoints__Grpc__Protocols
+              value: Http2
           envFrom:
             - secretRef:
                 name: identity-secrets

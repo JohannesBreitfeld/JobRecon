@@ -29,6 +29,12 @@ spec:
               value: http://identity:80
             - name: ReverseProxy__Clusters__profile__Destinations__default__Address
               value: http://profile:80
+            - name: ReverseProxy__Clusters__jobs__Destinations__default__Address
+              value: http://jobs:80
+            - name: ReverseProxy__Clusters__matching__Destinations__default__Address
+              value: http://matching:80
+            - name: ReverseProxy__Clusters__notifications__Destinations__default__Address
+              value: http://notifications:80
           livenessProbe:
             httpGet:
               path: /health/live

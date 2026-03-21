@@ -24,6 +24,15 @@ images:
   - name: ghcr.io/jobrecon-profile
     newName: localhost:5000/jobrecon-profile
     newTag: dev
+  - name: ghcr.io/jobrecon-jobs
+    newName: localhost:5000/jobrecon-jobs
+    newTag: dev
+  - name: ghcr.io/jobrecon-matching
+    newName: localhost:5000/jobrecon-matching
+    newTag: dev
+  - name: ghcr.io/jobrecon-notifications
+    newName: localhost:5000/jobrecon-notifications
+    newTag: dev
   - name: ghcr.io/jobrecon-gateway
     newName: localhost:5000/jobrecon-gateway
     newTag: dev

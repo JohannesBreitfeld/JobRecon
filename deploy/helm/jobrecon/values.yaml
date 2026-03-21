@@ -15,6 +15,7 @@ identity:
     repository: jobrecon-identity
   service:
     port: 80
+    grpcPort: 5011
   resources:
     requests:
       cpu: 100m
@@ -29,6 +30,56 @@ profile:
   replicaCount: 2
   image:
     repository: jobrecon-profile
+  service:
+    port: 80
+    grpcPort: 5012
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Jobs Service
+jobs:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: jobrecon-jobs
+  service:
+    port: 80
+    grpcPort: 5013
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Matching Service
+matching:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: jobrecon-matching
+  service:
+    port: 80
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Notifications Service
+notifications:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: jobrecon-notifications
   service:
     port: 80
   resources:

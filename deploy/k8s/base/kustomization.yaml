@@ -9,6 +9,12 @@ resources:
   - identity/service.yaml
   - profile/deployment.yaml
   - profile/service.yaml
+  - jobs/deployment.yaml
+  - jobs/service.yaml
+  - matching/deployment.yaml
+  - matching/service.yaml
+  - notifications/deployment.yaml
+  - notifications/service.yaml
   - gateway/deployment.yaml
   - gateway/service.yaml
   - gateway/ingress.yaml

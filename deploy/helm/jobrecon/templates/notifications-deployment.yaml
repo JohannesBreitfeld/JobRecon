@@ -1,0 +1,62 @@
+{{- if .Values.notifications.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-notifications
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "notifications") | nindent 4 }}
+spec:
+  replicas: {{ .Values.notifications.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "notifications") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "notifications") | nindent 8 }}
+    spec:
+      containers:
+        - name: notifications
+          image: {{ include "jobrecon.image" (dict "global" .Values.global "service" .Values.notifications) }}
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+            - name: ConnectionStrings__NotificationsDb
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: postgres-connection-string
+            - name: Jwt__SigningKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: jwt-signing-key
+            - name: GrpcServices__IdentityService
+              value: "http://{{ include "jobrecon.fullname" . }}-identity:5011"
+            - name: RabbitMQ__Host
+              value: rabbitmq
+            - name: RabbitMQ__Password
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: rabbitmq-password
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.notifications.resources | nindent 12 }}
+{{- end }}

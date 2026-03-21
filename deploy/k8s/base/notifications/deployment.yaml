@@ -1,43 +1,35 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: profile
+  name: notifications
   labels:
-    app.kubernetes.io/name: profile
-    app.kubernetes.io/component: profile
+    app.kubernetes.io/name: notifications
+    app.kubernetes.io/component: notifications
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: profile
+      app.kubernetes.io/name: notifications
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: profile
-        app.kubernetes.io/component: profile
+        app.kubernetes.io/name: notifications
+        app.kubernetes.io/component: notifications
     spec:
       containers:
-        - name: profile
-          image: ghcr.io/jobrecon-profile:latest
+        - name: notifications
+          image: ghcr.io/jobrecon-notifications:latest
           ports:
             - name: http
               containerPort: 8080
-            - name: grpc
-              containerPort: 5012
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Production
-            - name: Kestrel__Endpoints__Http__Url
-              value: http://0.0.0.0:8080
-            - name: Kestrel__Endpoints__Http__Protocols
-              value: Http1AndHttp2
-            - name: Kestrel__Endpoints__Grpc__Url
-              value: http://0.0.0.0:5012
-            - name: Kestrel__Endpoints__Grpc__Protocols
-              value: Http2
+            - name: GrpcServices__IdentityService
+              value: http://identity:5011
           envFrom:
             - secretRef:
-                name: profile-secrets
+                name: notifications-secrets
           livenessProbe:
             httpGet:
               path: /health/live
