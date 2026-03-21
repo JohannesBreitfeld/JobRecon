@@ -1,4 +1,5 @@
 using FluentAssertions;
+using JobRecon.Matching.Clients;
 using JobRecon.Matching.Contracts;
 using JobRecon.Matching.Services;
 using Microsoft.Extensions.Caching.Memory;
@@ -12,6 +13,8 @@ public class MatchingServiceTests
     private readonly IProfileClient _profileClient;
     private readonly IJobsClient _jobsClient;
     private readonly IEventPublisher _eventPublisher;
+    private readonly IOllamaClient _ollamaClient;
+    private readonly IVectorStore _vectorStore;
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<MatchingService> _logger;
     private readonly MatchingService _sut;
@@ -21,10 +24,16 @@ public class MatchingServiceTests
         _profileClient = Substitute.For<IProfileClient>();
         _jobsClient = Substitute.For<IJobsClient>();
         _eventPublisher = Substitute.For<IEventPublisher>();
+        _ollamaClient = Substitute.For<IOllamaClient>();
+        _vectorStore = Substitute.For<IVectorStore>();
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
         _logger = Substitute.For<ILogger<MatchingService>>();
 
-        _sut = new MatchingService(_profileClient, _jobsClient, _eventPublisher, _memoryCache, _logger);
+        // By default, Ollama returns null (triggering heuristic-only fallback)
+        _ollamaClient.GetEmbeddingAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns((float[]?)null);
+
+        _sut = new MatchingService(_profileClient, _jobsClient, _eventPublisher, _ollamaClient, _vectorStore, _memoryCache, _logger);
     }
 
     [Fact]

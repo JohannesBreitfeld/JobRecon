@@ -1,11 +1,14 @@
 using System.Text;
+using JobRecon.Matching.Clients;
 using JobRecon.Matching.Configuration;
 using JobRecon.Matching.Contracts;
 using JobRecon.Matching.Services;
+using JobRecon.Matching.Workers;
 using JobRecon.Protos.Jobs;
 using JobRecon.Protos.Profile;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Qdrant.Client;
 
 namespace JobRecon.Matching.Extensions;
 
@@ -18,6 +21,8 @@ public static class ServiceCollectionExtensions
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<GrpcServiceAddresses>(configuration.GetSection(GrpcServiceAddresses.SectionName));
         services.Configure<RabbitMqSettings>(configuration.GetSection(RabbitMqSettings.SectionName));
+        services.Configure<OllamaSettings>(configuration.GetSection(OllamaSettings.SectionName));
+        services.Configure<QdrantSettings>(configuration.GetSection(QdrantSettings.SectionName));
 
         var grpcAddresses = configuration.GetSection(GrpcServiceAddresses.SectionName).Get<GrpcServiceAddresses>()
             ?? new GrpcServiceAddresses();
@@ -41,6 +46,24 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IProfileClient, ProfileClient>();
         services.AddScoped<IJobsClient, JobsClient>();
+
+        // Ollama client for embeddings
+        var ollamaSettings = configuration.GetSection(OllamaSettings.SectionName).Get<OllamaSettings>()
+            ?? new OllamaSettings();
+        services.AddHttpClient<IOllamaClient, OllamaClient>(client =>
+        {
+            client.BaseAddress = new Uri(ollamaSettings.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
+        // Qdrant vector store
+        var qdrantSettings = configuration.GetSection(QdrantSettings.SectionName).Get<QdrantSettings>()
+            ?? new QdrantSettings();
+        services.AddSingleton(_ => new QdrantClient(qdrantSettings.Host, qdrantSettings.GrpcPort));
+        services.AddSingleton<IVectorStore, QdrantVectorStore>();
+
+        // Background worker for embedding jobs
+        services.AddHostedService<JobEmbeddingWorker>();
 
         // Add memory cache for caching profile/job data
         services.AddMemoryCache();

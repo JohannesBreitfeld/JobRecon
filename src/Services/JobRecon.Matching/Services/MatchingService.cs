@@ -1,4 +1,6 @@
+using JobRecon.Matching.Clients;
 using JobRecon.Matching.Contracts;
+using JobRecon.Matching.Workers;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace JobRecon.Matching.Services;
@@ -8,16 +10,25 @@ public sealed class MatchingService : IMatchingService
     private readonly IProfileClient _profileClient;
     private readonly IJobsClient _jobsClient;
     private readonly IEventPublisher _eventPublisher;
+    private readonly IOllamaClient _ollamaClient;
+    private readonly IVectorStore _vectorStore;
     private readonly IMemoryCache _cache;
     private readonly ILogger<MatchingService> _logger;
 
-    // Scoring weights (sum to 1.0)
+    // Heuristic scoring weights (sum to 1.0)
     private const double SkillWeight = 0.30;
     private const double TitleWeight = 0.25;
     private const double LocationWeight = 0.15;
     private const double SalaryWeight = 0.15;
     private const double ExperienceWeight = 0.10;
     private const double EmploymentTypeWeight = 0.05;
+
+    // Blending weights (vector vs heuristic)
+    private const double VectorWeight = 0.5;
+    private const double HeuristicWeight = 0.5;
+
+    // Vector search pre-filter size
+    private const int VectorTopK = 200;
 
     // Minimum score to trigger notification event
     private const double MinScoreForNotification = 0.5;
@@ -26,12 +37,16 @@ public sealed class MatchingService : IMatchingService
         IProfileClient profileClient,
         IJobsClient jobsClient,
         IEventPublisher eventPublisher,
+        IOllamaClient ollamaClient,
+        IVectorStore vectorStore,
         IMemoryCache cache,
         ILogger<MatchingService> logger)
     {
         _profileClient = profileClient;
         _jobsClient = jobsClient;
         _eventPublisher = eventPublisher;
+        _ollamaClient = ollamaClient;
+        _vectorStore = vectorStore;
         _cache = cache;
         _logger = logger;
     }
@@ -49,40 +64,31 @@ public sealed class MatchingService : IMatchingService
                 new MatchingSummary(0, 0, 0, [], []));
         }
 
-        // Fetch active jobs (batch processing)
-        var allRecommendations = new List<JobRecommendation>();
-        var offset = 0;
-        const int batchSize = 100;
-        var totalAnalyzed = 0;
+        // Try vector-based pre-filtering first
+        var vectorScores = await GetVectorScoresAsync(profile, cancellationToken);
+        var useVectorScoring = vectorScores.Count > 0;
 
-        while (true)
+        if (useVectorScoring)
         {
-            var jobsResponse = await _jobsClient.GetActiveJobsAsync(batchSize, offset, cancellationToken);
-            if (jobsResponse == null || jobsResponse.Jobs.Count == 0)
-                break;
+            _logger.LogInformation("Using vector + heuristic matching ({VectorCount} candidates)", vectorScores.Count);
+        }
+        else
+        {
+            _logger.LogInformation("Falling back to heuristic-only matching");
+        }
 
-            foreach (var job in jobsResponse.Jobs)
-            {
-                totalAnalyzed++;
-                var recommendation = CalculateMatch(profile, job);
+        List<JobRecommendation> allRecommendations;
+        int totalAnalyzed;
 
-                if (recommendation.MatchScore >= request.MinScore)
-                {
-                    allRecommendations.Add(recommendation);
-
-                    // Publish event for notifications
-                    if (recommendation.MatchScore >= MinScoreForNotification)
-                    {
-                        await PublishMatchEventAsync(userId, job, recommendation, cancellationToken);
-                    }
-                }
-            }
-
-            offset += batchSize;
-
-            // Limit total jobs analyzed for performance
-            if (offset >= 5000)
-                break;
+        if (useVectorScoring)
+        {
+            (allRecommendations, totalAnalyzed) = await MatchWithVectorPreFilterAsync(
+                profile, vectorScores, request.MinScore, cancellationToken);
+        }
+        else
+        {
+            (allRecommendations, totalAnalyzed) = await MatchHeuristicOnlyAsync(
+                profile, request.MinScore, cancellationToken);
         }
 
         // Sort by match score descending
@@ -96,7 +102,12 @@ public sealed class MatchingService : IMatchingService
             .Take(request.PageSize)
             .ToList();
 
-        // Build summary
+        // Publish events for high-scoring matches
+        foreach (var rec in paginatedRecommendations.Where(r => r.MatchScore >= MinScoreForNotification))
+        {
+            await PublishMatchEventAsync(userId, rec, cancellationToken);
+        }
+
         var summary = BuildSummary(profile, sortedRecommendations, totalAnalyzed);
 
         return new RecommendationsResponse(
@@ -105,6 +116,122 @@ public sealed class MatchingService : IMatchingService
             request.Page,
             request.PageSize,
             summary);
+    }
+
+    private async Task<Dictionary<Guid, float>> GetVectorScoresAsync(
+        ProfileDto profile, CancellationToken ct)
+    {
+        try
+        {
+            var profileText = BuildProfileText(profile);
+            var profileEmbedding = await _ollamaClient.GetEmbeddingAsync(profileText, ct);
+            if (profileEmbedding is null)
+                return new Dictionary<Guid, float>();
+
+            var results = await _vectorStore.SearchAsync(profileEmbedding, VectorTopK, ct);
+            return results.ToDictionary(r => r.JobId, r => r.Score);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Vector search failed, will use heuristic-only matching");
+            return new Dictionary<Guid, float>();
+        }
+    }
+
+    private async Task<(List<JobRecommendation> Recommendations, int TotalAnalyzed)> MatchWithVectorPreFilterAsync(
+        ProfileDto profile,
+        Dictionary<Guid, float> vectorScores,
+        double minScore,
+        CancellationToken ct)
+    {
+        var recommendations = new List<JobRecommendation>();
+        var totalAnalyzed = 0;
+
+        // Fetch full details for vector-matched jobs and apply heuristic scoring
+        foreach (var (jobId, vectorScore) in vectorScores)
+        {
+            var job = await _jobsClient.GetJobAsync(jobId, ct);
+            if (job is null)
+                continue;
+
+            totalAnalyzed++;
+            var heuristicScore = CalculateHeuristicScore(profile, job, out var factors);
+
+            // Blend vector and heuristic scores
+            var blendedScore = (vectorScore * VectorWeight) + (heuristicScore * HeuristicWeight);
+
+            if (IsExcluded(profile, job))
+                blendedScore = 0;
+
+            factors.Add(new MatchFactor("Semantic Similarity", $"Vector score: {vectorScore:P0}", vectorScore, VectorWeight));
+
+            if (blendedScore >= minScore)
+            {
+                recommendations.Add(CreateRecommendation(job, Math.Round(blendedScore, 2), factors));
+            }
+        }
+
+        return (recommendations, totalAnalyzed);
+    }
+
+    private async Task<(List<JobRecommendation> Recommendations, int TotalAnalyzed)> MatchHeuristicOnlyAsync(
+        ProfileDto profile,
+        double minScore,
+        CancellationToken ct)
+    {
+        var recommendations = new List<JobRecommendation>();
+        var offset = 0;
+        const int batchSize = 100;
+        var totalAnalyzed = 0;
+
+        while (true)
+        {
+            var jobsResponse = await _jobsClient.GetActiveJobsAsync(batchSize, offset, ct);
+            if (jobsResponse is null || jobsResponse.Jobs.Count == 0)
+                break;
+
+            foreach (var job in jobsResponse.Jobs)
+            {
+                totalAnalyzed++;
+                var score = CalculateHeuristicScore(profile, job, out var factors);
+
+                if (IsExcluded(profile, job))
+                    score = 0;
+
+                if (score >= minScore)
+                {
+                    recommendations.Add(CreateRecommendation(job, Math.Round(score, 2), factors));
+                }
+            }
+
+            offset += batchSize;
+            if (offset >= 5000)
+                break;
+        }
+
+        return (recommendations, totalAnalyzed);
+    }
+
+    private static string BuildProfileText(ProfileDto profile)
+    {
+        var parts = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(profile.CurrentJobTitle))
+            parts.Add(profile.CurrentJobTitle);
+
+        if (!string.IsNullOrWhiteSpace(profile.Summary))
+            parts.Add(profile.Summary);
+
+        if (profile.Skills.Count > 0)
+            parts.Add($"Skills: {string.Join(", ", profile.Skills.Select(s => s.Name))}");
+
+        if (profile.DesiredJobTitles.Count > 0)
+            parts.Add($"Looking for: {string.Join(", ", profile.DesiredJobTitles.Select(t => t.Title))}");
+
+        if (!string.IsNullOrWhiteSpace(profile.Location))
+            parts.Add($"Location: {profile.Location}");
+
+        return string.Join(". ", parts);
     }
 
     public async Task<JobRecommendation?> GetJobMatchScoreAsync(
@@ -120,46 +247,54 @@ public sealed class MatchingService : IMatchingService
         if (job == null)
             return null;
 
-        return CalculateMatch(profile, job);
+        var heuristicScore = CalculateHeuristicScore(profile, job, out var factors);
+
+        // Try to get vector score for this specific job
+        var vectorScores = await GetVectorScoresAsync(profile, cancellationToken);
+        if (vectorScores.TryGetValue(jobId, out var vectorScore))
+        {
+            var blendedScore = (vectorScore * VectorWeight) + (heuristicScore * HeuristicWeight);
+            factors.Add(new MatchFactor("Semantic Similarity", $"Vector score: {vectorScore:P0}", vectorScore, VectorWeight));
+
+            if (IsExcluded(profile, job))
+                blendedScore = 0;
+
+            return CreateRecommendation(job, Math.Round(blendedScore, 2), factors);
+        }
+
+        if (IsExcluded(profile, job))
+            heuristicScore = 0;
+
+        return CreateRecommendation(job, Math.Round(heuristicScore, 2), factors);
     }
 
-    private JobRecommendation CalculateMatch(ProfileDto profile, JobDto job)
+    private static double CalculateHeuristicScore(ProfileDto profile, JobDto job, out List<MatchFactor> factors)
     {
-        var factors = new List<MatchFactor>();
+        factors = [];
 
-        // 1. Skill matching
         var skillScore = CalculateSkillScore(profile, job, out var skillDescription);
         factors.Add(new MatchFactor("Skills", skillDescription, skillScore, SkillWeight));
 
-        // 2. Title matching
         var titleScore = CalculateTitleScore(profile, job, out var titleDescription);
         factors.Add(new MatchFactor("Job Title", titleDescription, titleScore, TitleWeight));
 
-        // 3. Location matching
         var locationScore = CalculateLocationScore(profile, job, out var locationDescription);
         factors.Add(new MatchFactor("Location", locationDescription, locationScore, LocationWeight));
 
-        // 4. Salary matching
         var salaryScore = CalculateSalaryScore(profile, job, out var salaryDescription);
         factors.Add(new MatchFactor("Salary", salaryDescription, salaryScore, SalaryWeight));
 
-        // 5. Experience matching
         var experienceScore = CalculateExperienceScore(profile, job, out var experienceDescription);
         factors.Add(new MatchFactor("Experience", experienceDescription, experienceScore, ExperienceWeight));
 
-        // 6. Employment type matching
         var employmentScore = CalculateEmploymentTypeScore(profile, job, out var employmentDescription);
         factors.Add(new MatchFactor("Employment Type", employmentDescription, employmentScore, EmploymentTypeWeight));
 
-        // Calculate weighted total
-        var totalScore = factors.Sum(f => f.Score * f.Weight);
+        return factors.Sum(f => f.Score * f.Weight);
+    }
 
-        // Check for exclusions (excluded companies, wrong work location type)
-        if (IsExcluded(profile, job))
-        {
-            totalScore = 0;
-        }
-
+    private static JobRecommendation CreateRecommendation(JobDto job, double score, List<MatchFactor> factors)
+    {
         return new JobRecommendation(
             job.Id,
             job.Title,
@@ -173,7 +308,7 @@ public sealed class MatchingService : IMatchingService
             job.SalaryCurrency,
             job.PostedAt,
             job.ExternalUrl,
-            Math.Round(totalScore, 2),
+            score,
             factors);
     }
 
@@ -494,7 +629,6 @@ public sealed class MatchingService : IMatchingService
 
     private async Task PublishMatchEventAsync(
         Guid userId,
-        JobDto job,
         JobRecommendation recommendation,
         CancellationToken ct)
     {
@@ -509,20 +643,20 @@ public sealed class MatchingService : IMatchingService
             var eventData = new JobMatchedEvent(
                 EventId: Guid.NewGuid(),
                 UserId: userId,
-                JobId: job.Id,
-                JobTitle: job.Title,
-                CompanyName: job.Company.Name,
-                Location: job.Location,
+                JobId: recommendation.JobId,
+                JobTitle: recommendation.Title,
+                CompanyName: recommendation.CompanyName,
+                Location: recommendation.Location,
                 MatchScore: recommendation.MatchScore,
                 TopFactors: topFactors,
-                JobUrl: job.ExternalUrl,
+                JobUrl: recommendation.ExternalUrl,
                 MatchedAt: DateTime.UtcNow);
 
             await _eventPublisher.PublishJobMatchedAsync(eventData, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to publish match event for job {JobId}", job.Id);
+            _logger.LogError(ex, "Failed to publish match event for job {JobId}", recommendation.JobId);
         }
     }
 
