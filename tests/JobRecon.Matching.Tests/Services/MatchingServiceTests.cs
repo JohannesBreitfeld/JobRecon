@@ -11,6 +11,7 @@ public class MatchingServiceTests
 {
     private readonly IProfileClient _profileClient;
     private readonly IJobsClient _jobsClient;
+    private readonly IEventPublisher _eventPublisher;
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<MatchingService> _logger;
     private readonly MatchingService _sut;
@@ -19,10 +20,11 @@ public class MatchingServiceTests
     {
         _profileClient = Substitute.For<IProfileClient>();
         _jobsClient = Substitute.For<IJobsClient>();
+        _eventPublisher = Substitute.For<IEventPublisher>();
         _memoryCache = new MemoryCache(new MemoryCacheOptions());
         _logger = Substitute.For<ILogger<MatchingService>>();
 
-        _sut = new MatchingService(_profileClient, _jobsClient, _memoryCache, _logger);
+        _sut = new MatchingService(_profileClient, _jobsClient, _eventPublisher, _memoryCache, _logger);
     }
 
     [Fact]

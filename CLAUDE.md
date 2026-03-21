@@ -145,9 +145,11 @@ JobRecon/
 │   │   └── JobRecon.Infrastructure/ # Cross-cutting concerns
 │   │
 │   ├── Services/
-│   │   ├── JobRecon.Identity/       # Auth service
-│   │   ├── JobRecon.Profile/        # Profile service
-│   │   └── ...                      # Other services
+│   │   ├── JobRecon.Identity/       # Auth service (port 5001)
+│   │   ├── JobRecon.Profile/        # Profile service (port 5002)
+│   │   ├── JobRecon.Jobs/           # Jobs service (port 5003)
+│   │   ├── JobRecon.Matching/       # Matching service (port 5005)
+│   │   └── JobRecon.Notifications/  # Notifications service (port 5006)
 │   │
 │   └── Gateway/
 │       └── JobRecon.Gateway/        # API Gateway

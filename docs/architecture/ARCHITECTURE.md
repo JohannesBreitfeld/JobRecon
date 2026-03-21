@@ -264,14 +264,25 @@
 
 | Responsibility | Details |
 |----------------|---------|
-| Email dispatch | SMTP/SendGrid integration |
-| Template management | Razor-based email templates |
-| Notification preferences | Per-user channel config |
-| Delivery tracking | Track sent/bounced/opened |
-| Batching | Digest mode for multiple matches |
+| Real-time alerts | Immediate notification for high-scoring matches (>80%) |
+| Digest emails | Daily/weekly batch summaries for lower-scoring matches |
+| Email dispatch | MailKit SMTP integration |
+| In-app notifications | Stored notifications with read/unread status |
+| Template management | HTML email templates (embedded resources) |
+| Notification preferences | Per-user channel config, thresholds, digest timing |
+| Batching | Hangfire-based hourly digest processing |
 
-**Events Consumed:** `MatchFound`
-**Database:** PostgreSQL (notification logs)
+**Events Consumed:** `JobMatchedEvent` (from Matching Service via RabbitMQ)
+**Database:** PostgreSQL (notifications, preferences, digest_queue)
+**Port:** 5006
+
+**API Endpoints:**
+- `GET /api/notifications` - List user's notifications (paginated)
+- `GET /api/notifications/unread-count` - Get unread count
+- `POST /api/notifications/{id}/read` - Mark notification as read
+- `POST /api/notifications/read-all` - Mark all as read
+- `GET /api/notifications/preferences` - Get user preferences
+- `PUT /api/notifications/preferences` - Update preferences
 
 ---
 

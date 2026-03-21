@@ -7,6 +7,7 @@ public sealed class MatchingService : IMatchingService
 {
     private readonly IProfileClient _profileClient;
     private readonly IJobsClient _jobsClient;
+    private readonly IEventPublisher _eventPublisher;
     private readonly IMemoryCache _cache;
     private readonly ILogger<MatchingService> _logger;
 
@@ -18,14 +19,19 @@ public sealed class MatchingService : IMatchingService
     private const double ExperienceWeight = 0.10;
     private const double EmploymentTypeWeight = 0.05;
 
+    // Minimum score to trigger notification event
+    private const double MinScoreForNotification = 0.5;
+
     public MatchingService(
         IProfileClient profileClient,
         IJobsClient jobsClient,
+        IEventPublisher eventPublisher,
         IMemoryCache cache,
         ILogger<MatchingService> logger)
     {
         _profileClient = profileClient;
         _jobsClient = jobsClient;
+        _eventPublisher = eventPublisher;
         _cache = cache;
         _logger = logger;
     }
@@ -63,6 +69,12 @@ public sealed class MatchingService : IMatchingService
                 if (recommendation.MatchScore >= request.MinScore)
                 {
                     allRecommendations.Add(recommendation);
+
+                    // Publish event for notifications
+                    if (recommendation.MatchScore >= MinScoreForNotification)
+                    {
+                        await PublishMatchEventAsync(userId, job, recommendation, cancellationToken);
+                    }
                 }
             }
 
@@ -478,6 +490,40 @@ public sealed class MatchingService : IMatchingService
 
         description = $"Employment type ({job.EmploymentType}) not preferred";
         return 0.3;
+    }
+
+    private async Task PublishMatchEventAsync(
+        Guid userId,
+        JobDto job,
+        JobRecommendation recommendation,
+        CancellationToken ct)
+    {
+        try
+        {
+            var topFactors = recommendation.MatchFactors
+                .OrderByDescending(f => f.Score * f.Weight)
+                .Take(3)
+                .Select(f => new MatchFactorEvent(f.Category, f.Score, f.Description))
+                .ToList();
+
+            var eventData = new JobMatchedEvent(
+                EventId: Guid.NewGuid(),
+                UserId: userId,
+                JobId: job.Id,
+                JobTitle: job.Title,
+                CompanyName: job.Company.Name,
+                Location: job.Location,
+                MatchScore: recommendation.MatchScore,
+                TopFactors: topFactors,
+                JobUrl: job.ExternalUrl,
+                MatchedAt: DateTime.UtcNow);
+
+            await _eventPublisher.PublishJobMatchedAsync(eventData, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish match event for job {JobId}", job.Id);
+        }
     }
 
     private static bool IsExcluded(ProfileDto profile, JobDto job)

@@ -7,6 +7,7 @@
     <Project Path="src/Services/JobRecon.Identity/JobRecon.Identity.csproj" />
     <Project Path="src/Services/JobRecon.Jobs/JobRecon.Jobs.csproj" />
     <Project Path="src/Services/JobRecon.Matching/JobRecon.Matching.csproj" />
+    <Project Path="src/Services/JobRecon.Notifications/JobRecon.Notifications.csproj" />
     <Project Path="src/Services/JobRecon.Profile/JobRecon.Profile.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
@@ -18,6 +19,7 @@
     <Project Path="tests/JobRecon.Identity.Tests/JobRecon.Identity.Tests.csproj" />
     <Project Path="tests/JobRecon.Jobs.Tests/JobRecon.Jobs.Tests.csproj" />
     <Project Path="tests/JobRecon.Matching.Tests/JobRecon.Matching.Tests.csproj" />
+    <Project Path="tests/JobRecon.Notifications.Tests/JobRecon.Notifications.Tests.csproj" />
     <Project Path="tests/JobRecon.Profile.Tests/JobRecon.Profile.Tests.csproj" />
   </Folder>
 </Solution>

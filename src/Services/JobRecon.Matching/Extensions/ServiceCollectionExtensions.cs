@@ -17,12 +17,16 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<ServiceUrls>(configuration.GetSection(ServiceUrls.SectionName));
+        services.Configure<RabbitMqSettings>(configuration.GetSection(RabbitMqSettings.SectionName));
 
         var serviceUrls = configuration.GetSection(ServiceUrls.SectionName).Get<ServiceUrls>()
             ?? new ServiceUrls();
 
         // Register matching service
         services.AddScoped<IMatchingService, MatchingService>();
+
+        // Register event publisher
+        services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
 
         // Register HTTP clients for external services
         services.AddHttpClient<IProfileClient, ProfileClient>(client =>
