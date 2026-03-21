@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ProfilePage } from './components/profile';
 import { JobsPage } from './components/jobs';
+import { RecommendationsPage } from './components/matching';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 function App() {
@@ -23,6 +24,14 @@ function App() {
           }
         />
         <Route path="/jobs" element={<JobsPage />} />
+        <Route
+          path="/recommendations"
+          element={
+            <ProtectedRoute>
+              <RecommendationsPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Layout>
   );

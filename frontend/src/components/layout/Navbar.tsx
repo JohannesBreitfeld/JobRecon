@@ -41,13 +41,23 @@ export function Navbar() {
           component={RouterLink}
           to="/"
           sx={{
-            flexGrow: 1,
             textDecoration: 'none',
             color: 'inherit',
           }}
         >
           JobRecon
         </Typography>
+
+        <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, ml: 3 }}>
+          <Button color="inherit" component={RouterLink} to="/jobs">
+            Jobb
+          </Button>
+          {isAuthenticated && (
+            <Button color="inherit" component={RouterLink} to="/recommendations">
+              Rekommendationer
+            </Button>
+          )}
+        </Box>
 
         {isAuthenticated ? (
           <Box>
