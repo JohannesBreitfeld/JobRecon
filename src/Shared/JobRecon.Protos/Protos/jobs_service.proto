@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+option csharp_namespace = "JobRecon.Protos.Jobs";
+
+import "google/protobuf/timestamp.proto";
+
+package jobrecon.jobs;
+
+service JobsGrpc {
+  rpc GetActiveJobs (GetActiveJobsRequest) returns (JobListResponse);
+  rpc GetJob (GetJobRequest) returns (JobResponse);
+}
+
+message GetActiveJobsRequest {
+  int32 limit = 1;
+  int32 offset = 2;
+}
+
+message JobListResponse {
+  repeated JobMessage jobs = 1;
+  int32 total_count = 2;
+}
+
+message GetJobRequest {
+  string job_id = 1;
+}
+
+message JobResponse {
+  optional JobMessage job = 1;
+}
+
+message JobMessage {
+  string id = 1;
+  string title = 2;
+  optional string description = 3;
+  optional string location = 4;
+  optional string work_location_type = 5;
+  optional string employment_type = 6;
+  optional double salary_min = 7;
+  optional double salary_max = 8;
+  optional string salary_currency = 9;
+  optional string required_skills = 10;
+  optional int32 experience_years_min = 11;
+  optional int32 experience_years_max = 12;
+  optional google.protobuf.Timestamp posted_at = 13;
+  optional string external_url = 14;
+  CompanyMessage company = 15;
+  repeated string tags = 16;
+}
+
+message CompanyMessage {
+  string id = 1;
+  string name = 2;
+  optional string logo_url = 3;
+  optional string industry = 4;
+}

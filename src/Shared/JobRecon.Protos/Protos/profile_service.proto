@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+option csharp_namespace = "JobRecon.Protos.Profile";
+
+package jobrecon.profile;
+
+service ProfileGrpc {
+  rpc GetProfile (GetProfileRequest) returns (ProfileResponse);
+  rpc GetUserEmail (GetUserEmailRequest) returns (UserEmailResponse);
+}
+
+message GetProfileRequest {
+  string user_id = 1;
+}
+
+message ProfileResponse {
+  string user_id = 1;
+  optional string current_job_title = 2;
+  optional string summary = 3;
+  optional string location = 4;
+  optional int32 years_of_experience = 5;
+  repeated SkillMessage skills = 6;
+  repeated DesiredJobTitleMessage desired_job_titles = 7;
+  optional JobPreferenceMessage preferences = 8;
+}
+
+message SkillMessage {
+  string name = 1;
+  string level = 2;
+  optional int32 years_of_experience = 3;
+}
+
+message DesiredJobTitleMessage {
+  string title = 1;
+  int32 priority = 2;
+}
+
+message JobPreferenceMessage {
+  optional double min_salary = 1;
+  optional double max_salary = 2;
+  optional string preferred_locations = 3;
+  bool is_remote_preferred = 4;
+  bool is_hybrid_accepted = 5;
+  bool is_on_site_accepted = 6;
+  optional string preferred_employment_types = 7;
+  optional string preferred_industries = 8;
+  optional string excluded_companies = 9;
+  bool is_actively_looking = 10;
+}
+
+message GetUserEmailRequest {
+  string user_id = 1;
+}
+
+message UserEmailResponse {
+  string email = 1;
+  optional string display_name = 2;
+}
