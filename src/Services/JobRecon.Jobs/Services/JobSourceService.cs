@@ -1,3 +1,4 @@
+using Hangfire;
 using JobRecon.Domain.Common;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Domain;
@@ -199,8 +200,7 @@ public sealed class JobSourceService : IJobSourceService
             return Result.Failure(Error.Validation("JobSource.Disabled", "Job source is disabled"));
         }
 
-        // This will be implemented with Hangfire
-        // BackgroundJob.Enqueue<IJobFetcherService>(x => x.FetchJobsFromSourceAsync(id, CancellationToken.None));
+        BackgroundJob.Enqueue<IJobFetcherService>(x => x.FetchJobsFromSourceAsync(id, CancellationToken.None));
 
         _logger.LogInformation("Triggered manual fetch for job source {SourceId}", id);
 
