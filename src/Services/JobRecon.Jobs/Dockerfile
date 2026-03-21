@@ -8,16 +8,16 @@ COPY src/Shared/JobRecon.Contracts/JobRecon.Contracts.csproj src/Shared/JobRecon
 COPY src/Shared/JobRecon.Domain/JobRecon.Domain.csproj src/Shared/JobRecon.Domain/
 COPY src/Shared/JobRecon.Infrastructure/JobRecon.Infrastructure.csproj src/Shared/JobRecon.Infrastructure/
 COPY src/Shared/JobRecon.Protos/JobRecon.Protos.csproj src/Shared/JobRecon.Protos/
-COPY src/Services/JobRecon.Profile/JobRecon.Profile.csproj src/Services/JobRecon.Profile/
+COPY src/Services/JobRecon.Jobs/JobRecon.Jobs.csproj src/Services/JobRecon.Jobs/
 
 # Restore dependencies
-RUN dotnet restore src/Services/JobRecon.Profile/JobRecon.Profile.csproj
+RUN dotnet restore src/Services/JobRecon.Jobs/JobRecon.Jobs.csproj
 
 # Copy source code
 COPY src/ src/
 
 # Build and publish
-WORKDIR /src/src/Services/JobRecon.Profile
+WORKDIR /src/src/Services/JobRecon.Jobs
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 # Runtime stage
@@ -33,4 +33,4 @@ COPY --from=build /app/publish .
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 
-ENTRYPOINT ["dotnet", "JobRecon.Profile.dll"]
+ENTRYPOINT ["dotnet", "JobRecon.Jobs.dll"]

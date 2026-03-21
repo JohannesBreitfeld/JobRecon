@@ -7,6 +7,7 @@ COPY JobRecon.slnx .
 COPY src/Shared/JobRecon.Contracts/JobRecon.Contracts.csproj src/Shared/JobRecon.Contracts/
 COPY src/Shared/JobRecon.Domain/JobRecon.Domain.csproj src/Shared/JobRecon.Domain/
 COPY src/Shared/JobRecon.Infrastructure/JobRecon.Infrastructure.csproj src/Shared/JobRecon.Infrastructure/
+COPY src/Shared/JobRecon.Protos/JobRecon.Protos.csproj src/Shared/JobRecon.Protos/
 COPY src/Services/JobRecon.Identity/JobRecon.Identity.csproj src/Services/JobRecon.Identity/
 
 # Restore dependencies

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ===================
   # Infrastructure
@@ -117,6 +115,151 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+
+  # ===================
+  # Application Services
+  # ===================
+  identity:
+    build:
+      context: ../..
+      dockerfile: src/Services/JobRecon.Identity/Dockerfile
+    container_name: jobrecon-identity
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: "http://+:5001;http://+:5011"
+      ConnectionStrings__IdentityDb: "Host=postgres;Database=jobrecon;Username=jobrecon;Password=${POSTGRES_PASSWORD:-devpassword};Search Path=identity"
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
+      Kestrel__Endpoints__Http__Url: "http://0.0.0.0:5001"
+      Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
+      Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5011"
+      Kestrel__Endpoints__Grpc__Protocols: "Http2"
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  profile:
+    build:
+      context: ../..
+      dockerfile: src/Services/JobRecon.Profile/Dockerfile
+    container_name: jobrecon-profile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__ProfileDb: "Host=postgres;Database=jobrecon;Username=jobrecon;Password=${POSTGRES_PASSWORD:-devpassword};Search Path=profile"
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
+      MinIO__Endpoint: "minio:9000"
+      MinIO__AccessKey: "jobrecon"
+      MinIO__SecretKey: "${MINIO_PASSWORD:-devpassword123}"
+      Kestrel__Endpoints__Http__Url: "http://0.0.0.0:5002"
+      Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
+      Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5012"
+      Kestrel__Endpoints__Grpc__Protocols: "Http2"
+    ports:
+      - "5002:5002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  jobs:
+    build:
+      context: ../..
+      dockerfile: src/Services/JobRecon.Jobs/Dockerfile
+    container_name: jobrecon-jobs
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__JobsDb: "Host=postgres;Database=jobrecon;Username=jobrecon;Password=${POSTGRES_PASSWORD:-devpassword};Search Path=jobs"
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
+      Kestrel__Endpoints__Http__Url: "http://0.0.0.0:5003"
+      Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
+      Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5013"
+      Kestrel__Endpoints__Grpc__Protocols: "Http2"
+    ports:
+      - "5003:5003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  matching:
+    build:
+      context: ../..
+      dockerfile: src/Services/JobRecon.Matching/Dockerfile
+    container_name: jobrecon-matching
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
+      GrpcServices__ProfileService: "http://profile:5012"
+      GrpcServices__JobsService: "http://jobs:5013"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: jobrecon
+      RabbitMQ__Password: "${RABBITMQ_PASSWORD:-devpassword}"
+      Ollama__BaseUrl: "http://ollama:11434"
+      Qdrant__Host: qdrant
+      Qdrant__GrpcPort: "6334"
+    ports:
+      - "5005:8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
+  notifications:
+    build:
+      context: ../..
+      dockerfile: src/Services/JobRecon.Notifications/Dockerfile
+    container_name: jobrecon-notifications
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__NotificationsDb: "Host=postgres;Database=jobrecon;Username=jobrecon;Password=${POSTGRES_PASSWORD:-devpassword};Search Path=notifications"
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
+      GrpcServices__IdentityService: "http://identity:5011"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Username: jobrecon
+      RabbitMQ__Password: "${RABBITMQ_PASSWORD:-devpassword}"
+      Email__SmtpHost: mailhog
+      Email__SmtpPort: "1025"
+    ports:
+      - "5006:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ../..
+      dockerfile: src/Gateway/JobRecon.Gateway/Dockerfile
+    container_name: jobrecon-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
+      ReverseProxy__Clusters__identity__Destinations__destination1__Address: "http://identity:5001"
+      ReverseProxy__Clusters__profile__Destinations__destination1__Address: "http://profile:5002"
+      ReverseProxy__Clusters__jobs__Destinations__destination1__Address: "http://jobs:5003"
+      ReverseProxy__Clusters__matching__Destinations__destination1__Address: "http://matching:8080"
+      ReverseProxy__Clusters__notifications__Destinations__destination1__Address: "http://notifications:8080"
+    ports:
+      - "5000:8080"
+    depends_on:
+      - identity
+      - profile
+      - jobs
+      - matching
+      - notifications
+
+  frontend:
+    build:
+      context: ../..
+      dockerfile: frontend/Dockerfile
+    container_name: jobrecon-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
 
 volumes:
   postgres_data:
