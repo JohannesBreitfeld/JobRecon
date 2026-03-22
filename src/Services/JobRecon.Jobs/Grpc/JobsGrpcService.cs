@@ -69,20 +69,20 @@ public sealed class JobsGrpcService(
         var msg = new JobMessage
         {
             Id = job.Id.ToString(),
-            Title = job.Title,
-            Description = job.Description,
-            Location = job.Location,
-            WorkLocationType = job.WorkLocationType?.ToString(),
-            EmploymentType = job.EmploymentType?.ToString(),
-            SalaryCurrency = job.SalaryCurrency,
-            RequiredSkills = job.RequiredSkills,
-            ExternalUrl = job.ExternalUrl,
+            Title = job.Title ?? "",
+            Description = job.Description ?? "",
+            Location = job.Location ?? "",
+            WorkLocationType = job.WorkLocationType?.ToString() ?? "",
+            EmploymentType = job.EmploymentType?.ToString() ?? "",
+            SalaryCurrency = job.SalaryCurrency ?? "",
+            RequiredSkills = job.RequiredSkills ?? "",
+            ExternalUrl = job.ExternalUrl ?? "",
             Company = new CompanyMessage
             {
                 Id = job.Company.Id.ToString(),
-                Name = job.Company.Name,
-                LogoUrl = job.Company.LogoUrl,
-                Industry = job.Company.Industry
+                Name = job.Company.Name ?? "",
+                LogoUrl = job.Company.LogoUrl ?? "",
+                Industry = job.Company.Industry ?? ""
             }
         };
 

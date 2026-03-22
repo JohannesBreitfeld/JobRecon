@@ -22,6 +22,7 @@ public sealed class JobTechLinksFetcher : IJobFetcher
         ILogger<JobTechLinksFetcher> logger)
     {
         _httpClient = httpClient;
+        _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("JobRecon/1.0");
         _logger = logger;
 
         _retryPolicy = Policy
@@ -61,6 +62,14 @@ public sealed class JobTechLinksFetcher : IJobFetcher
                     jobs.AddRange(fetchedJobs);
                     config.LastDownloadedDate = dateStr;
                     _logger.LogInformation("Processed {Count} jobs from {Date}", fetchedJobs.Count, dateStr);
+                }
+
+                // Limit total jobs per fetch to avoid overwhelming the DB
+                if (config.MaxJobsPerFetch > 0 && jobs.Count >= config.MaxJobsPerFetch)
+                {
+                    _logger.LogInformation("Reached max jobs limit of {Limit}, stopping fetch", config.MaxJobsPerFetch);
+                    jobs = jobs.Take(config.MaxJobsPerFetch).ToList();
+                    break;
                 }
             }
 
@@ -183,61 +192,39 @@ public sealed class JobTechLinksFetcher : IJobFetcher
             // Extract tar
             await TarFile.ExtractToDirectoryAsync(tarPath, extractDir, overwriteFiles: true, cancellationToken);
 
-            // Find and parse JSON files
+            var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Find and parse JSON files (JSONL format — one JSON object per line)
             foreach (var jsonFile in Directory.GetFiles(extractDir, "*.json", SearchOption.AllDirectories))
             {
-                var content = await File.ReadAllTextAsync(jsonFile, cancellationToken);
+                var lineCount = 0;
+                var parsedCount = 0;
 
-                // Try parsing as response with hits array
-                try
+                await foreach (var line in File.ReadLinesAsync(jsonFile, cancellationToken))
                 {
-                    var response = JsonSerializer.Deserialize<JobTechLinksResponse>(content, new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    });
+                    lineCount++;
+                    if (string.IsNullOrWhiteSpace(line)) continue;
 
-                    if (response?.Hits != null)
-                    {
-                        foreach (var hit in response.Hits)
-                        {
-                            if (!hit.Removed)
-                            {
-                                jobs.Add(MapToFetchedJob(hit));
-                            }
-                        }
-                    }
-                }
-                catch (JsonException)
-                {
-                    // Try parsing as array of hits directly
                     try
                     {
-                        var hits = JsonSerializer.Deserialize<List<JobTechLinksHit>>(content, new JsonSerializerOptions
+                        var entry = JsonSerializer.Deserialize<JobTechLinksEntry>(line, jsonOptions);
+                        if (entry?.OriginalJobPosting != null)
                         {
-                            PropertyNameCaseInsensitive = true
-                        });
-
-                        if (hits != null)
-                        {
-                            foreach (var hit in hits)
-                            {
-                                if (!hit.Removed)
-                                {
-                                    jobs.Add(MapToFetchedJob(hit));
-                                }
-                            }
+                            jobs.Add(MapEntryToFetchedJob(entry));
+                            parsedCount++;
                         }
                     }
-                    catch (JsonException ex)
+                    catch (JsonException)
                     {
-                        _logger.LogWarning(ex, "Failed to parse JSON file: {File}", jsonFile);
+                        // Skip malformed lines
                     }
                 }
+
+                _logger.LogInformation("Parsed {Parsed}/{Total} lines from {File}", parsedCount, lineCount, Path.GetFileName(jsonFile));
             }
         }
         finally
         {
-            // Cleanup
             if (Directory.Exists(extractDir))
             {
                 Directory.Delete(extractDir, recursive: true);
@@ -247,53 +234,52 @@ public sealed class JobTechLinksFetcher : IJobFetcher
         return jobs;
     }
 
-    private static FetchedJob MapToFetchedJob(JobTechLinksHit hit)
+    private static FetchedJob MapEntryToFetchedJob(JobTechLinksEntry entry)
     {
-        var primaryAddress = hit.WorkplaceAddresses?.FirstOrDefault();
-        var primarySourceLink = hit.SourceLinks?.FirstOrDefault();
+        var posting = entry.OriginalJobPosting!;
+
+        DateTime? postedAt = null;
+        if (DateOnly.TryParse(posting.DatePosted, out var datePosted))
+            postedAt = datePosted.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+
+        DateTime? expiresAt = null;
+        if (!string.IsNullOrEmpty(entry.ApplicationDeadline) &&
+            DateTime.TryParse(entry.ApplicationDeadline, out var deadline))
+            expiresAt = DateTime.SpecifyKind(deadline, DateTimeKind.Utc);
+        else if (!string.IsNullOrEmpty(posting.ValidThrough) &&
+                 DateOnly.TryParse(posting.ValidThrough, out var validThrough))
+            expiresAt = validThrough.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
+
+        // Ensure FirstSeen is UTC if present
+        DateTime? firstSeen = entry.FirstSeen.HasValue
+            ? DateTime.SpecifyKind(entry.FirstSeen.Value, DateTimeKind.Utc)
+            : null;
 
         return new FetchedJob
         {
-            ExternalId = hit.Id,
-            Title = hit.Headline ?? "Untitled",
-            Description = hit.Description?.Text ?? hit.Brief,
-            CompanyName = hit.Employer?.Name ?? "Unknown",
-            CompanyLogoUrl = hit.LogoUrl,
-            CompanyWebsite = hit.Employer?.Url,
-            Location = GetLocation(primaryAddress),
-            WorkLocationType = null, // Not directly available in JobTech Links
-            EmploymentType = ParseEmploymentType(hit.EmploymentType?.Label, hit.WorkingHoursType?.Label),
+            ExternalId = entry.Id,
+            Title = posting.Title?.Trim() ?? "Untitled",
+            Description = posting.Description,
+            CompanyName = posting.HiringOrganization?.Name ?? "Unknown",
+            CompanyLogoUrl = null,
+            CompanyWebsite = posting.HiringOrganization?.Url,
+            Location = posting.JobLocation?.AddressLocality,
+            WorkLocationType = null,
+            EmploymentType = ParseEmploymentType(posting.EmploymentType, null),
             SalaryMin = null,
             SalaryMax = null,
             SalaryCurrency = "SEK",
-            SalaryPeriod = hit.SalaryType?.Label,
-            ExternalUrl = primarySourceLink?.Url,
-            ApplicationUrl = primarySourceLink?.Url,
-            RequiredSkills = GetRequiredSkills(hit.MustHave),
+            SalaryPeriod = null,
+            ExternalUrl = posting.Url,
+            ApplicationUrl = posting.Url,
+            RequiredSkills = GetSkillsFromEnrichments(entry.TextEnrichmentsResults),
             Benefits = null,
-            ExperienceYearsMin = hit.ExperienceRequired == true ? 1 : null,
+            ExperienceYearsMin = null,
             ExperienceYearsMax = null,
-            PostedAt = hit.PublicationDate ?? hit.LastPublicationDate,
-            ExpiresAt = hit.ApplicationDeadline,
-            Tags = ExtractTags(hit)
+            PostedAt = postedAt ?? firstSeen,
+            ExpiresAt = expiresAt,
+            Tags = ExtractTagsFromEntry(entry)
         };
-    }
-
-    private static string? GetLocation(JobTechLinksAddress? address)
-    {
-        if (address == null) return null;
-
-        var parts = new List<string>();
-
-        if (!string.IsNullOrEmpty(address.City))
-            parts.Add(address.City);
-        else if (!string.IsNullOrEmpty(address.Municipality))
-            parts.Add(address.Municipality);
-
-        if (!string.IsNullOrEmpty(address.Region))
-            parts.Add(address.Region);
-
-        return parts.Count > 0 ? string.Join(", ", parts) : null;
     }
 
     private static EmploymentType? ParseEmploymentType(string? employmentType, string? workingHoursType)
@@ -302,56 +288,60 @@ public sealed class JobTechLinksFetcher : IJobFetcher
 
         return combined switch
         {
-            var t when t.Contains("heltid") => EmploymentType.FullTime,
+            var t when t.Contains("heltid") || t.Contains("vanlig") => EmploymentType.FullTime,
             var t when t.Contains("deltid") => EmploymentType.PartTime,
-            var t when t.Contains("vikariat") || t.Contains("tidsbegränsad") => EmploymentType.Temporary,
+            var t when t.Contains("vikariat") || t.Contains("tidsbegr") => EmploymentType.Temporary,
             var t when t.Contains("praktik") => EmploymentType.Internship,
             var t when t.Contains("frilans") || t.Contains("konsult") => EmploymentType.Freelance,
             _ => null
         };
     }
 
-    private static string? GetRequiredSkills(JobTechLinksRequirements? requirements)
+    private static string? GetSkillsFromEnrichments(JobTechLinksEnrichments? enrichments)
     {
-        if (requirements == null) return null;
+        var candidates = enrichments?.EnrichedResult?.EnrichedCandidates;
+        if (candidates == null) return null;
 
         var skills = new List<string>();
 
-        if (requirements.Skills != null)
-            skills.AddRange(requirements.Skills.Select(s => s.Label).Where(l => !string.IsNullOrEmpty(l))!);
+        if (candidates.Competencies != null)
+        {
+            skills.AddRange(candidates.Competencies
+                .Where(c => c.Prediction > 0.3 && !string.IsNullOrEmpty(c.ConceptLabel))
+                .Select(c => c.ConceptLabel!)
+                .Distinct());
+        }
 
-        if (requirements.Languages != null)
-            skills.AddRange(requirements.Languages.Select(l => l.Label).Where(l => !string.IsNullOrEmpty(l))!);
-
-        return skills.Count > 0 ? string.Join(", ", skills) : null;
+        return skills.Count > 0 ? string.Join(", ", skills.Take(20)) : null;
     }
 
-    private static List<string> ExtractTags(JobTechLinksHit hit)
+    private static List<string> ExtractTagsFromEntry(JobTechLinksEntry entry)
     {
         var tags = new List<string>();
+        var candidates = entry.TextEnrichmentsResults?.EnrichedResult?.EnrichedCandidates;
 
-        // Add occupation info
-        if (!string.IsNullOrEmpty(hit.Occupation?.Label))
-            tags.Add(hit.Occupation.Label);
+        // Add occupation labels
+        if (candidates?.Occupations != null)
+        {
+            tags.AddRange(candidates.Occupations
+                .Where(o => o.Prediction > 0.5 && !string.IsNullOrEmpty(o.ConceptLabel))
+                .Select(o => o.ConceptLabel!)
+                .Distinct());
+        }
 
-        if (!string.IsNullOrEmpty(hit.OccupationGroup?.Label))
-            tags.Add(hit.OccupationGroup.Label);
+        // Add relevant occupation from posting
+        if (!string.IsNullOrEmpty(entry.OriginalJobPosting?.RelevantOccupation?.Name))
+            tags.Add(entry.OriginalJobPosting.RelevantOccupation.Name);
 
-        if (!string.IsNullOrEmpty(hit.OccupationField?.Label))
-            tags.Add(hit.OccupationField.Label);
+        // Add top competencies
+        if (candidates?.Competencies != null)
+        {
+            tags.AddRange(candidates.Competencies
+                .Where(c => c.Prediction > 0.5 && !string.IsNullOrEmpty(c.ConceptLabel))
+                .Select(c => c.ConceptLabel!)
+                .Distinct());
+        }
 
-        // Add required skills
-        if (hit.MustHave?.Skills != null)
-            tags.AddRange(hit.MustHave.Skills.Select(s => s.Label).Where(l => !string.IsNullOrEmpty(l))!);
-
-        // Add nice-to-have skills
-        if (hit.NiceToHave?.Skills != null)
-            tags.AddRange(hit.NiceToHave.Skills.Select(s => s.Label).Where(l => !string.IsNullOrEmpty(l))!);
-
-        // Add languages
-        if (hit.MustHave?.Languages != null)
-            tags.AddRange(hit.MustHave.Languages.Select(l => l.Label).Where(l => !string.IsNullOrEmpty(l))!);
-
-        return tags.Distinct().Take(30).ToList();
+        return tags.Distinct(StringComparer.OrdinalIgnoreCase).Take(30).ToList();
     }
 }

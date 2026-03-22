@@ -223,4 +223,124 @@ public sealed class JobTechLinksConfig
 {
     public string? LastDownloadedDate { get; set; }
     public int MaxDaysToFetch { get; set; } = 7;
+    public int MaxJobsPerFetch { get; set; } = 1000;
+}
+
+// ===== JSONL format models (actual format in downloaded .tar.gz files) =====
+
+/// <summary>
+/// Root object for each line in the JSONL file
+/// </summary>
+public sealed class JobTechLinksEntry
+{
+    [JsonPropertyName("originalJobPosting")]
+    public JobTechLinksOriginalPosting? OriginalJobPosting { get; set; }
+
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = null!;
+
+    [JsonPropertyName("firstSeen")]
+    public DateTime? FirstSeen { get; set; }
+
+    [JsonPropertyName("detected_language")]
+    public string? DetectedLanguage { get; set; }
+
+    [JsonPropertyName("application_deadline")]
+    public string? ApplicationDeadline { get; set; }
+
+    [JsonPropertyName("text_enrichments_results")]
+    public JobTechLinksEnrichments? TextEnrichmentsResults { get; set; }
+}
+
+public sealed class JobTechLinksOriginalPosting
+{
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
+
+    [JsonPropertyName("hiringOrganization")]
+    public JobTechLinksOrganization? HiringOrganization { get; set; }
+
+    [JsonPropertyName("jobLocation")]
+    public JobTechLinksJobLocation? JobLocation { get; set; }
+
+    [JsonPropertyName("employmentType")]
+    public string? EmploymentType { get; set; }
+
+    [JsonPropertyName("datePosted")]
+    public string? DatePosted { get; set; }
+
+    [JsonPropertyName("validThrough")]
+    public string? ValidThrough { get; set; }
+
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    [JsonPropertyName("identifier")]
+    public string? Identifier { get; set; }
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("relevantOccupation")]
+    public JobTechLinksOccupation? RelevantOccupation { get; set; }
+}
+
+public sealed class JobTechLinksOrganization
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+}
+
+public sealed class JobTechLinksJobLocation
+{
+    [JsonPropertyName("addressLocality")]
+    public string? AddressLocality { get; set; }
+
+    [JsonPropertyName("addressRegion")]
+    public string? AddressRegion { get; set; }
+
+    [JsonPropertyName("addressCountry")]
+    public string? AddressCountry { get; set; }
+}
+
+public sealed class JobTechLinksOccupation
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+}
+
+public sealed class JobTechLinksEnrichments
+{
+    [JsonPropertyName("enriched_result")]
+    public JobTechLinksEnrichedResult? EnrichedResult { get; set; }
+}
+
+public sealed class JobTechLinksEnrichedResult
+{
+    [JsonPropertyName("enriched_candidates")]
+    public JobTechLinksEnrichedCandidates? EnrichedCandidates { get; set; }
+}
+
+public sealed class JobTechLinksEnrichedCandidates
+{
+    [JsonPropertyName("occupations")]
+    public List<JobTechLinksEnrichedItem>? Occupations { get; set; }
+
+    [JsonPropertyName("competencies")]
+    public List<JobTechLinksEnrichedItem>? Competencies { get; set; }
+}
+
+public sealed class JobTechLinksEnrichedItem
+{
+    [JsonPropertyName("concept_label")]
+    public string? ConceptLabel { get; set; }
+
+    [JsonPropertyName("term")]
+    public string? Term { get; set; }
+
+    [JsonPropertyName("prediction")]
+    public double? Prediction { get; set; }
 }

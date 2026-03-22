@@ -173,7 +173,7 @@ public sealed class ProfileService : IProfileService
             UserProfileId = profile.Id
         };
 
-        profile.Skills.Add(skill);
+        _dbContext.Skills.Add(skill);
         profile.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);

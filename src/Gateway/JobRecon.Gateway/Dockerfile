@@ -20,12 +20,8 @@ WORKDIR /src/src/Gateway/JobRecon.Gateway
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS runtime
 WORKDIR /app
-
-# Create non-root user for security
-RUN adduser --disabled-password --gecos '' appuser
-USER appuser
 
 COPY --from=build /app/publish .
 

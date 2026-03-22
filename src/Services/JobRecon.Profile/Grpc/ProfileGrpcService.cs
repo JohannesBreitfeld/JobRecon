@@ -35,9 +35,9 @@ public sealed class ProfileGrpcService(
         var response = new ProfileResponse
         {
             UserId = profile.UserId.ToString(),
-            CurrentJobTitle = profile.CurrentJobTitle,
-            Summary = profile.Summary,
-            Location = profile.Location
+            CurrentJobTitle = profile.CurrentJobTitle ?? "",
+            Summary = profile.Summary ?? "",
+            Location = profile.Location ?? ""
         };
 
         if (profile.YearsOfExperience.HasValue)
@@ -73,10 +73,10 @@ public sealed class ProfileGrpcService(
                 IsHybridAccepted = pref.IsHybridAccepted,
                 IsOnSiteAccepted = pref.IsOnSiteAccepted,
                 IsActivelyLooking = pref.IsActivelyLooking,
-                PreferredLocations = pref.PreferredLocations,
+                PreferredLocations = pref.PreferredLocations ?? "",
                 PreferredEmploymentTypes = pref.PreferredEmploymentType.ToString(),
-                PreferredIndustries = pref.PreferredIndustries,
-                ExcludedCompanies = pref.ExcludedCompanies
+                PreferredIndustries = pref.PreferredIndustries ?? "",
+                ExcludedCompanies = pref.ExcludedCompanies ?? ""
             };
 
             if (pref.MinSalary.HasValue)

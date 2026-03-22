@@ -83,9 +83,10 @@ public sealed class JobService : IJobService
             query = query.Where(j => j.PostedAt >= request.PostedAfter);
         }
 
-        if (request.Tags is { Count: > 0 })
+        if (!string.IsNullOrWhiteSpace(request.Tags))
         {
-            var normalizedTags = request.Tags.Select(t => t.ToLower()).ToList();
+            var normalizedTags = request.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(t => t.ToLower()).ToList();
             query = query.Where(j => j.Tags.Any(t => normalizedTags.Contains(t.NormalizedName!)));
         }
 
@@ -110,25 +111,29 @@ public sealed class JobService : IJobService
 
         var totalCount = await query.CountAsync(cancellationToken);
 
+        var sortDescending = request.SortDescending ?? true;
+        var page = request.Page ?? 1;
+        var pageSize = request.PageSize ?? 20;
+
         query = request.SortBy?.ToLower() switch
         {
-            "salary" => request.SortDescending
+            "salary" => sortDescending
                 ? query.OrderByDescending(j => j.SalaryMax)
                 : query.OrderBy(j => j.SalaryMin),
-            "company" => request.SortDescending
+            "company" => sortDescending
                 ? query.OrderByDescending(j => j.Company.Name)
                 : query.OrderBy(j => j.Company.Name),
-            "title" => request.SortDescending
+            "title" => sortDescending
                 ? query.OrderByDescending(j => j.Title)
                 : query.OrderBy(j => j.Title),
-            _ => request.SortDescending
+            _ => sortDescending
                 ? query.OrderByDescending(j => j.PostedAt ?? j.CreatedAt)
                 : query.OrderBy(j => j.PostedAt ?? j.CreatedAt)
         };
 
         var jobs = await query
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(j => new JobListResponse
             {
                 Id = j.Id,
@@ -162,9 +167,9 @@ public sealed class JobService : IJobService
         {
             Jobs = jobs,
             TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize,
-            TotalPages = (int)Math.Ceiling((double)totalCount / request.PageSize)
+            Page = page,
+            PageSize = pageSize,
+            TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
         });
     }
 

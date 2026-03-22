@@ -13,13 +13,13 @@ public sealed class JobSearchRequest
     public Guid? CompanyId { get; set; }
     public Guid? JobSourceId { get; set; }
     public int? ExperienceYearsMax { get; set; }
-    public List<string>? Tags { get; set; }
+    public string? Tags { get; set; }
     public bool? SavedOnly { get; set; }
     public DateTime? PostedAfter { get; set; }
     public string? SortBy { get; set; }
-    public bool SortDescending { get; set; } = true;
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public bool? SortDescending { get; set; }
+    public int? Page { get; set; }
+    public int? PageSize { get; set; }
 }
 
 public sealed class SaveJobRequest

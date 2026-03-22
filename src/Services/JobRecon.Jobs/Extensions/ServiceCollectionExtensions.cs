@@ -21,9 +21,12 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.AddDbContext<JobsDbContext>(options =>
-            options.UseNpgsql(
-                configuration.GetConnectionString("JobsDb"),
-                npgsqlOptions => npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "jobs")));
+            options
+                .UseNpgsql(
+                    configuration.GetConnectionString("JobsDb"),
+                    npgsqlOptions => npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "jobs"))
+                .ConfigureWarnings(w => w.Ignore(
+                    Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<HangfireSettings>(configuration.GetSection(HangfireSettings.SectionName));
@@ -50,8 +53,9 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         var hangfireSettings = configuration.GetSection(HangfireSettings.SectionName).Get<HangfireSettings>();
-        var connectionString = hangfireSettings?.ConnectionString
-            ?? configuration.GetConnectionString("JobsDb");
+        var connectionString = string.IsNullOrEmpty(hangfireSettings?.ConnectionString)
+            ? configuration.GetConnectionString("JobsDb")
+            : hangfireSettings.ConnectionString;
 
         services.AddHangfire(config => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)

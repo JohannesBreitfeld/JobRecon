@@ -1,7 +1,9 @@
 using JobRecon.Identity.Domain;
 using JobRecon.Identity.Endpoints;
+using JobRecon.Identity.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Identity.Extensions;
 
@@ -43,6 +45,9 @@ public static class WebApplicationExtensions
     public static async Task SeedDataAsync(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        await dbContext.Database.MigrateAsync();
+
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
         string[] roles = ["Admin", "User"];
