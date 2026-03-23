@@ -51,18 +51,26 @@ public sealed class MinioFileStorageService : IFileStorageService
     {
         var memoryStream = new MemoryStream();
 
-        var getObjectArgs = new GetObjectArgs()
-            .WithBucket(_settings.BucketName)
-            .WithObject(storagePath)
-            .WithCallbackStream(stream =>
-            {
-                stream.CopyTo(memoryStream);
-                memoryStream.Position = 0;
-            });
+        try
+        {
+            var getObjectArgs = new GetObjectArgs()
+                .WithBucket(_settings.BucketName)
+                .WithObject(storagePath)
+                .WithCallbackStream(stream =>
+                {
+                    stream.CopyTo(memoryStream);
+                    memoryStream.Position = 0;
+                });
 
-        await _minioClient.GetObjectAsync(getObjectArgs, cancellationToken);
+            await _minioClient.GetObjectAsync(getObjectArgs, cancellationToken);
 
-        return memoryStream;
+            return memoryStream;
+        }
+        catch
+        {
+            await memoryStream.DisposeAsync();
+            throw;
+        }
     }
 
     public async Task DeleteAsync(

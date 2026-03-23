@@ -1,4 +1,4 @@
-using JobRecon.Matching.Contracts;
+using JobRecon.Contracts.Events;
 
 namespace JobRecon.Matching.Services;
 

@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using JobRecon.Matching.Configuration;
-using JobRecon.Matching.Contracts;
+using JobRecon.Contracts.Events;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 

@@ -62,8 +62,9 @@ services:
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 60s
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -155,6 +156,7 @@ services:
       MinIO__Endpoint: "minio:9000"
       MinIO__AccessKey: "jobrecon"
       MinIO__SecretKey: "${MINIO_PASSWORD:-devpassword123}"
+      GrpcApiKey: "${GRPC_API_KEY:-}"
       Kestrel__Endpoints__Http__Url: "http://0.0.0.0:5002"
       Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
       Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5012"
@@ -182,6 +184,7 @@ services:
       Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
       Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5013"
       Kestrel__Endpoints__Grpc__Protocols: "Http2"
+      GrpcApiKey: "${GRPC_API_KEY:-}"
     ports:
       - "5003:5003"
     depends_on:
@@ -206,6 +209,7 @@ services:
       Ollama__BaseUrl: "http://ollama:11434"
       Qdrant__Host: qdrant
       Qdrant__GrpcPort: "6334"
+      GrpcApiKey: "${GRPC_API_KEY:-}"
     ports:
       - "5005:8080"
     depends_on:

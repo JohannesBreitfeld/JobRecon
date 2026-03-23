@@ -33,16 +33,28 @@ public static class ServiceCollectionExtensions
         // Register event publisher
         services.AddSingleton<IEventPublisher, RabbitMqEventPublisher>();
 
-        // Register gRPC clients
+        // Register gRPC clients with API key authentication
+        var grpcApiKey = configuration["GrpcApiKey"] ?? "";
+
         services.AddGrpcClient<ProfileGrpc.ProfileGrpcClient>(o =>
         {
             o.Address = new Uri(grpcAddresses.ProfileService);
-        });
+        }).AddCallCredentials((context, metadata) =>
+        {
+            if (!string.IsNullOrEmpty(grpcApiKey))
+                metadata.Add("x-api-key", grpcApiKey);
+            return Task.CompletedTask;
+        }).ConfigureChannel(o => o.UnsafeUseInsecureChannelCallCredentials = true);
 
         services.AddGrpcClient<JobsGrpc.JobsGrpcClient>(o =>
         {
             o.Address = new Uri(grpcAddresses.JobsService);
-        });
+        }).AddCallCredentials((context, metadata) =>
+        {
+            if (!string.IsNullOrEmpty(grpcApiKey))
+                metadata.Add("x-api-key", grpcApiKey);
+            return Task.CompletedTask;
+        }).ConfigureChannel(o => o.UnsafeUseInsecureChannelCallCredentials = true);
 
         services.AddScoped<IProfileClient, ProfileClient>();
         services.AddScoped<IJobsClient, JobsClient>();

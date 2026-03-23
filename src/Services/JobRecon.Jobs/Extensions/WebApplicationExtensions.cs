@@ -57,8 +57,17 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 {
     public bool Authorize(DashboardContext context)
     {
-        // In production, implement proper authorization
         var httpContext = context.GetHttpContext();
-        return httpContext.Request.Host.Host == "localhost";
+        var connection = httpContext.Connection;
+        var remoteIp = connection.RemoteIpAddress;
+
+        // Allow only local connections
+        if (remoteIp is not null)
+        {
+            return System.Net.IPAddress.IsLoopback(remoteIp)
+                || remoteIp.Equals(connection.LocalIpAddress);
+        }
+
+        return false;
     }
 }

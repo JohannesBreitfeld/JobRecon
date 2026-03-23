@@ -7,7 +7,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddJobsServices(builder.Configuration);
 builder.Services.AddJobsHangfire(builder.Configuration);
 builder.Services.AddJobsAuthentication(builder.Configuration);
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<JobRecon.Jobs.Grpc.ApiKeyInterceptor>();
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApiDocument(config =>

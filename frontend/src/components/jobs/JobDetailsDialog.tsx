@@ -234,8 +234,9 @@ export function JobDetailsDialog({ jobId, open, onClose }: JobDetailsDialogProps
                 <Typography
                   variant="body2"
                   sx={{ whiteSpace: 'pre-wrap' }}
-                  dangerouslySetInnerHTML={{ __html: selectedJob.description.replace(/\n/g, '<br/>') }}
-                />
+                >
+                  {selectedJob.description}
+                </Typography>
               </Box>
             )}
 

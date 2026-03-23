@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using JobRecon.Notifications.Configuration;
+using JobRecon.Contracts.Events;
 using JobRecon.Notifications.Contracts;
 using JobRecon.Notifications.Domain;
 using Microsoft.Extensions.Options;

@@ -30,6 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Shared\JobRecon.Contracts\JobRecon.Contracts.csproj" />
     <ProjectReference Include="..\..\Shared\JobRecon.Infrastructure\JobRecon.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared\JobRecon.Protos\JobRecon.Protos.csproj" />
   </ItemGroup>

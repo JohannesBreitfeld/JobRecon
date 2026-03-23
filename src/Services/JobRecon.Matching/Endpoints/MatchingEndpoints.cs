@@ -38,8 +38,8 @@ public static class MatchingEndpoints
             return Results.Unauthorized();
 
         var request = new GetRecommendationsRequest(
-            pageSize ?? 20,
-            page ?? 1,
+            Math.Clamp(pageSize ?? 20, 1, 100),
+            Math.Max(1, page ?? 1),
             minScore ?? 0.0);
 
         var result = await matchingService.GetRecommendationsAsync(

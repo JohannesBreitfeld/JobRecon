@@ -25,6 +25,9 @@ WORKDIR /app
 
 COPY --from=build /app/publish .
 
+RUN useradd --no-create-home --shell /bin/false appuser
+USER appuser
+
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
 

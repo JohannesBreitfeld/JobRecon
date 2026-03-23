@@ -1,4 +1,5 @@
 using JobRecon.Matching.Clients;
+using JobRecon.Contracts.Events;
 using JobRecon.Matching.Contracts;
 using JobRecon.Matching.Workers;
 using Microsoft.Extensions.Caching.Memory;

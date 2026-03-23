@@ -1,4 +1,4 @@
-namespace JobRecon.Notifications.Contracts;
+namespace JobRecon.Contracts.Events;
 
 public record JobMatchedEvent(
     Guid EventId,

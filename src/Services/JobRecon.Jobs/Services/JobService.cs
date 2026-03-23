@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using JobRecon.Domain.Common;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Domain;
@@ -112,8 +114,8 @@ public sealed class JobService : IJobService
         var totalCount = await query.CountAsync(cancellationToken);
 
         var sortDescending = request.SortDescending ?? true;
-        var page = request.Page ?? 1;
-        var pageSize = request.PageSize ?? 20;
+        var page = Math.Max(1, request.Page ?? 1);
+        var pageSize = Math.Clamp(request.PageSize ?? 20, 1, 100);
 
         query = request.SortBy?.ToLower() switch
         {
@@ -274,6 +276,8 @@ public sealed class JobService : IJobService
                 });
             }
         }
+
+        job.Hash = ComputeJobHash(job.Title, job.Description, company.Name, job.Location, job.SalaryMin, job.SalaryMax);
 
         _dbContext.Jobs.Add(job);
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -568,6 +572,13 @@ public sealed class JobService : IJobService
             EmployeeCount = company.EmployeeCount,
             JobCount = company.Jobs.Count(j => j.Status == JobStatus.Active)
         });
+    }
+
+    private static string ComputeJobHash(string? title, string? description, string? companyName, string? location, decimal? salaryMin, decimal? salaryMax)
+    {
+        var content = $"|{title}|{companyName}|{description}|{location}|{salaryMin}|{salaryMax}";
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(content));
+        return Convert.ToHexString(bytes).ToLower();
     }
 
     private static JobResponse MapToResponse(Job job, SavedJob? savedJob)

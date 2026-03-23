@@ -185,6 +185,12 @@ public static class ProfileEndpoints
             return Results.BadRequest(new { error = "File is empty" });
         }
 
+        const long maxFileSize = 10 * 1024 * 1024; // 10 MB
+        if (file.Length > maxFileSize)
+        {
+            return Results.BadRequest(new { error = "File size exceeds the 10 MB limit." });
+        }
+
         var allowedTypes = new[] { "application/pdf", "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" };
 
