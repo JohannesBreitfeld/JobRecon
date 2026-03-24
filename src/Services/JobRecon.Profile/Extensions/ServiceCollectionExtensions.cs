@@ -1,3 +1,5 @@
+using JobRecon.Domain.Common;
+using JobRecon.Infrastructure.Persistence;
 using JobRecon.Profile.Configuration;
 using JobRecon.Profile.Infrastructure;
 using JobRecon.Profile.Services;
@@ -15,10 +17,15 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<ProfileDbContext>(options =>
+        services.AddScoped<DomainEventInterceptor>();
+
+        services.AddDbContext<ProfileDbContext>((sp, options) =>
+        {
             options.UseNpgsql(
                 configuration.GetConnectionString("ProfileDb"),
-                npgsqlOptions => npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "profile")));
+                npgsqlOptions => npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "profile"));
+            options.AddInterceptors(sp.GetRequiredService<DomainEventInterceptor>());
+        });
 
         services.Configure<MinioSettings>(configuration.GetSection(MinioSettings.SectionName));
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
@@ -31,6 +38,8 @@ public static class ServiceCollectionExtensions
             .WithSSL(minioSettings.UseSSL)
             .Build());
 
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<ProfileService>());
+        services.AddScoped<IDomainEventDispatcher, MediatRDomainEventDispatcher>();
         services.AddScoped<IFileStorageService, MinioFileStorageService>();
         services.AddScoped<IProfileService, ProfileService>();
 

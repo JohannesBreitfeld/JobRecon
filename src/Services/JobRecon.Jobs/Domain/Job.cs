@@ -1,8 +1,9 @@
+using JobRecon.Domain.Common;
+
 namespace JobRecon.Jobs.Domain;
 
-public sealed class Job
+public sealed class Job : AggregateRoot<Guid>
 {
-    public Guid Id { get; set; }
     public required string Title { get; set; }
     public string? NormalizedTitle { get; set; }
     public string? Description { get; set; }

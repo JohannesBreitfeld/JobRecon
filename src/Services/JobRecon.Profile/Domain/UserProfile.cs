@@ -1,8 +1,9 @@
+using JobRecon.Domain.Common;
+
 namespace JobRecon.Profile.Domain;
 
-public sealed class UserProfile
+public sealed class UserProfile : AggregateRoot<Guid>
 {
-    public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string? CurrentJobTitle { get; set; }
     public string? Summary { get; set; }

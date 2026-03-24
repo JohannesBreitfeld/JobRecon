@@ -1,5 +1,7 @@
 using Hangfire;
 using Hangfire.PostgreSql;
+using JobRecon.Domain.Common;
+using JobRecon.Infrastructure.Persistence;
 using JobRecon.Jobs.Configuration;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Infrastructure;
@@ -21,17 +23,27 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<JobsDbContext>(options =>
+        services.AddScoped<DomainEventInterceptor>();
+
+        services.AddDbContext<JobsDbContext>((sp, options) =>
+        {
             options
                 .UseNpgsql(
                     configuration.GetConnectionString("JobsDb"),
                     npgsqlOptions => npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "jobs"))
                 .ConfigureWarnings(w => w.Ignore(
-                    Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+                    Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+            options.AddInterceptors(sp.GetRequiredService<DomainEventInterceptor>());
+        });
 
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));
         services.Configure<HangfireSettings>(configuration.GetSection(HangfireSettings.SectionName));
+        services.Configure<RabbitMqSettings>(configuration.GetSection(RabbitMqSettings.SectionName));
 
+        services.AddSingleton<IJobEventPublisher, RabbitMqJobEventPublisher>();
+
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<JobService>());
+        services.AddScoped<IDomainEventDispatcher, MediatRDomainEventDispatcher>();
         services.AddScoped<IJobService, JobService>();
         services.AddScoped<IJobSourceService, JobSourceService>();
         services.AddScoped<IJobFetcherService, JobFetcherService>();
