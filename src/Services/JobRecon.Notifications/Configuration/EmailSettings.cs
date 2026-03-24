@@ -12,4 +12,5 @@ public sealed class EmailSettings
     public string FromEmail { get; set; } = "notifications@jobrecon.com";
     public string FromName { get; set; } = "JobRecon";
     public int MaxEmailsPerHour { get; set; } = 100;
+    public string BaseUrl { get; set; } = "https://jobrecon.com";
 }

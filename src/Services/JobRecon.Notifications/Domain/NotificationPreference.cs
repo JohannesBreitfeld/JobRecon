@@ -11,6 +11,7 @@ public sealed class NotificationPreference
     public TimeOnly DigestTime { get; set; } = new(8, 0);
     public double MinMatchScoreForRealtime { get; set; } = 0.8;
     public string? OverrideEmail { get; set; }
+    public string UnsubscribeToken { get; set; } = Guid.NewGuid().ToString("N");
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 
@@ -27,6 +28,7 @@ public sealed class NotificationPreference
             DigestFrequency = DigestFrequency.Daily,
             DigestTime = new TimeOnly(8, 0),
             MinMatchScoreForRealtime = 0.8,
+            UnsubscribeToken = Guid.NewGuid().ToString("N"),
             CreatedAt = now,
             UpdatedAt = now
         };

@@ -227,7 +227,7 @@ public sealed class JobMatchEventConsumer : BackgroundService, IJobMatchEventCon
                     eventData.TopFactors.Select(f => new MatchFactorData(f.Category, f.Score, f.Description)).ToList(),
                     eventData.JobUrl);
 
-                await emailService.SendJobMatchEmailAsync(email, null, emailDto, ct);
+                await emailService.SendJobMatchEmailAsync(email, null, emailDto, preferences.UnsubscribeToken, ct);
 
                 // Create email notification record
                 await notificationService.CreateNotificationAsync(

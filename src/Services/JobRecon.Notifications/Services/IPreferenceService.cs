@@ -16,4 +16,6 @@ public interface IPreferenceService
         DigestFrequency frequency,
         TimeOnly currentTime,
         CancellationToken ct = default);
+
+    Task<bool> UnsubscribeByTokenAsync(string token, CancellationToken ct = default);
 }

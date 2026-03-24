@@ -8,11 +8,13 @@ public interface IEmailService
         string toEmail,
         string? toName,
         JobMatchEmailDto match,
+        string? unsubscribeToken = null,
         CancellationToken ct = default);
 
     Task<bool> SendDigestEmailAsync(
         string toEmail,
         string? toName,
         DigestEmailDto digest,
+        string? unsubscribeToken = null,
         CancellationToken ct = default);
 }

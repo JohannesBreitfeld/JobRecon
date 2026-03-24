@@ -33,6 +33,15 @@ public static class NotificationEndpoints
             .WithName("MarkAllNotificationsAsRead")
             .WithSummary("Mark all notifications as read")
             .Produces<MarkAllReadResponse>();
+
+        // Anonymous unsubscribe endpoint (one-click from email)
+        app.MapGet("/api/notifications/unsubscribe", Unsubscribe)
+            .WithName("UnsubscribeFromEmails")
+            .WithTags("Notifications")
+            .WithSummary("Unsubscribe from email notifications via token")
+            .Produces(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound)
+            .AllowAnonymous();
     }
 
     private static async Task<IResult> GetNotifications(
@@ -105,6 +114,26 @@ public static class NotificationEndpoints
         var count = await notificationService.MarkAllAsReadAsync(userId.Value, ct);
 
         return Results.Ok(new MarkAllReadResponse(count));
+    }
+
+    private static async Task<IResult> Unsubscribe(
+        [FromServices] IPreferenceService preferenceService,
+        [FromQuery] string token,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return Results.BadRequest(new { error = "Token is required." });
+        }
+
+        var success = await preferenceService.UnsubscribeByTokenAsync(token, ct);
+
+        if (!success)
+        {
+            return Results.NotFound(new { error = "Invalid or expired unsubscribe token." });
+        }
+
+        return Results.Ok(new { message = "You have been unsubscribed from email notifications." });
     }
 
     private static Guid? GetUserId(ClaimsPrincipal user)

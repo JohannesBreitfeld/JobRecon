@@ -77,4 +77,25 @@ public sealed class PreferenceService : IPreferenceService
                 && p.DigestTime <= hourEnd)
             .ToListAsync(ct);
     }
+
+    public async Task<bool> UnsubscribeByTokenAsync(string token, CancellationToken ct = default)
+    {
+        var preference = await _dbContext.NotificationPreferences
+            .FirstOrDefaultAsync(p => p.UnsubscribeToken == token, ct);
+
+        if (preference is null)
+        {
+            return false;
+        }
+
+        preference.EmailEnabled = false;
+        preference.DigestEnabled = false;
+        preference.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        _logger.LogInformation("User {UserId} unsubscribed from emails via token", preference.UserId);
+
+        return true;
+    }
 }

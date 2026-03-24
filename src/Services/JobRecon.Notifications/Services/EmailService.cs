@@ -9,6 +9,8 @@ namespace JobRecon.Notifications.Services;
 
 public sealed class EmailService : IEmailService
 {
+    private const int MaxRetries = 3;
+
     private readonly EmailSettings _settings;
     private readonly ILogger<EmailService> _logger;
 
@@ -24,6 +26,7 @@ public sealed class EmailService : IEmailService
         string toEmail,
         string? toName,
         JobMatchEmailDto match,
+        string? unsubscribeToken = null,
         CancellationToken ct = default)
     {
         var subject = $"New Job Match: {match.JobTitle} at {match.CompanyName}";
@@ -37,13 +40,16 @@ public sealed class EmailService : IEmailService
             .Replace("{{TopFactors}}", FormatMatchFactors(match.TopFactors))
             .Replace("{{JobUrl}}", match.JobUrl ?? "#");
 
-        return await SendEmailAsync(toEmail, toName, subject, body, ct);
+        body = AppendUnsubscribeFooter(body, unsubscribeToken);
+
+        return await SendEmailWithRetryAsync(toEmail, toName, subject, body, ct);
     }
 
     public async Task<bool> SendDigestEmailAsync(
         string toEmail,
         string? toName,
         DigestEmailDto digest,
+        string? unsubscribeToken = null,
         CancellationToken ct = default)
     {
         var subject = $"Your Daily Job Matches - {digest.TotalJobCount} new opportunities";
@@ -57,48 +63,90 @@ public sealed class EmailService : IEmailService
             .Replace("{{PeriodEnd}}", digest.PeriodEnd.ToString("MMM dd, yyyy"))
             .Replace("{{Jobs}}", jobsHtml);
 
-        return await SendEmailAsync(toEmail, toName, subject, body, ct);
+        body = AppendUnsubscribeFooter(body, unsubscribeToken);
+
+        return await SendEmailWithRetryAsync(toEmail, toName, subject, body, ct);
     }
 
-    private async Task<bool> SendEmailAsync(
+    private async Task<bool> SendEmailWithRetryAsync(
         string toEmail,
         string? toName,
         string subject,
         string htmlBody,
         CancellationToken ct)
     {
-        try
+        for (var attempt = 1; attempt <= MaxRetries; attempt++)
         {
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(_settings.FromName, _settings.FromEmail));
-            message.To.Add(new MailboxAddress(toName ?? toEmail, toEmail));
-            message.Subject = subject;
-
-            var bodyBuilder = new BodyBuilder
+            try
             {
-                HtmlBody = htmlBody
-            };
-            message.Body = bodyBuilder.ToMessageBody();
+                var message = new MimeMessage();
+                message.From.Add(new MailboxAddress(_settings.FromName, _settings.FromEmail));
+                message.To.Add(new MailboxAddress(toName ?? toEmail, toEmail));
+                message.Subject = subject;
 
-            using var client = new SmtpClient();
-            await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, _settings.UseSsl, ct);
+                var bodyBuilder = new BodyBuilder { HtmlBody = htmlBody };
+                message.Body = bodyBuilder.ToMessageBody();
 
-            if (!string.IsNullOrEmpty(_settings.Username))
-            {
-                await client.AuthenticateAsync(_settings.Username, _settings.Password, ct);
+                using var client = new SmtpClient();
+                await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, _settings.UseSsl, ct);
+
+                if (!string.IsNullOrEmpty(_settings.Username))
+                {
+                    await client.AuthenticateAsync(_settings.Username, _settings.Password, ct);
+                }
+
+                await client.SendAsync(message, ct);
+                await client.DisconnectAsync(true, ct);
+
+                _logger.LogInformation("Email sent successfully to {ToEmail}: {Subject}", toEmail, subject);
+                return true;
             }
-
-            await client.SendAsync(message, ct);
-            await client.DisconnectAsync(true, ct);
-
-            _logger.LogInformation("Email sent successfully to {ToEmail}: {Subject}", toEmail, subject);
-            return true;
+            catch (Exception ex) when (attempt < MaxRetries)
+            {
+                var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
+                _logger.LogWarning(ex,
+                    "Failed to send email to {ToEmail} (attempt {Attempt}/{Max}), retrying in {Delay}",
+                    toEmail, attempt, MaxRetries, delay);
+                await Task.Delay(delay, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to send email to {ToEmail}: {Subject} after {Max} attempts",
+                    toEmail, subject, MaxRetries);
+            }
         }
-        catch (Exception ex)
+
+        return false;
+    }
+
+    private string AppendUnsubscribeFooter(string htmlBody, string? unsubscribeToken)
+    {
+        var footer = unsubscribeToken is not null
+            ? $"""
+                <hr style="margin-top:30px;border:none;border-top:1px solid #ddd;">
+                <p style="font-size:12px;color:#888;text-align:center;">
+                    You are receiving this because you have email notifications enabled on JobRecon.<br/>
+                    <a href="{_settings.BaseUrl}/api/notifications/unsubscribe?token={unsubscribeToken}">Unsubscribe from emails</a>
+                    &nbsp;|&nbsp;
+                    <a href="{_settings.BaseUrl}/settings/notifications">Manage preferences</a>
+                </p>
+                """
+            : """
+                <hr style="margin-top:30px;border:none;border-top:1px solid #ddd;">
+                <p style="font-size:12px;color:#888;text-align:center;">
+                    You are receiving this because you have email notifications enabled on JobRecon.<br/>
+                    <a href="#">Manage preferences</a>
+                </p>
+                """;
+
+        // Insert before closing </body> if present, otherwise append
+        if (htmlBody.Contains("</body>", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogError(ex, "Failed to send email to {ToEmail}: {Subject}", toEmail, subject);
-            return false;
+            return htmlBody.Replace("</body>", footer + "\n</body>", StringComparison.OrdinalIgnoreCase);
         }
+
+        return htmlBody + footer;
     }
 
     private static async Task<string> LoadTemplateAsync(string templateName)

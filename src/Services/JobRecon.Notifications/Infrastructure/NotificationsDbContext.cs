@@ -147,6 +147,15 @@ public sealed class NotificationsDbContext : DbContext
                 .HasColumnName("override_email")
                 .HasMaxLength(256);
 
+            entity.Property(p => p.UnsubscribeToken)
+                .HasColumnName("unsubscribe_token")
+                .HasMaxLength(64)
+                .IsRequired();
+
+            entity.HasIndex(p => p.UnsubscribeToken)
+                .HasDatabaseName("ix_notification_preferences_unsubscribe_token")
+                .IsUnique();
+
             entity.Property(p => p.CreatedAt)
                 .HasColumnName("created_at")
                 .IsRequired();

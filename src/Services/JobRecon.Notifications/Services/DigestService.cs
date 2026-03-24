@@ -141,7 +141,7 @@ public sealed class DigestService : IDigestService
         var digest = new DigestEmailDto(digestItems, pendingItems.Count, periodStart, periodEnd);
 
         // Send email
-        var emailSent = await _emailService.SendDigestEmailAsync(email, null, digest, ct);
+        var emailSent = await _emailService.SendDigestEmailAsync(email, null, digest, preference.UnsubscribeToken, ct);
 
         if (emailSent)
         {
