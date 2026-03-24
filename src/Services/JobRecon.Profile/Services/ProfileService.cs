@@ -47,6 +47,7 @@ public sealed class ProfileService : IProfileService
         CancellationToken cancellationToken = default)
     {
         var existingProfile = await _dbContext.UserProfiles
+            .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
         if (existingProfile is not null)
@@ -226,6 +227,7 @@ public sealed class ProfileService : IProfileService
     {
         var profile = await _dbContext.UserProfiles
             .Include(p => p.JobPreference)
+            .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
         if (profile is null)
@@ -348,6 +350,7 @@ public sealed class ProfileService : IProfileService
     {
         var profile = await _dbContext.UserProfiles
             .Include(p => p.CVDocuments)
+            .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
         if (profile is null)

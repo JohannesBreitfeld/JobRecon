@@ -22,6 +22,7 @@ public sealed class JobSourceService : IJobSourceService
         CancellationToken cancellationToken = default)
     {
         var sources = await _dbContext.JobSources
+            .AsNoTracking()
             .OrderBy(s => s.Name)
             .Select(s => new JobSourceResponse
             {
@@ -44,6 +45,7 @@ public sealed class JobSourceService : IJobSourceService
         CancellationToken cancellationToken = default)
     {
         var source = await _dbContext.JobSources
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
         if (source is null)
@@ -69,6 +71,7 @@ public sealed class JobSourceService : IJobSourceService
         CancellationToken cancellationToken = default)
     {
         var existingSource = await _dbContext.JobSources
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Name == request.Name, cancellationToken);
 
         if (existingSource is not null)

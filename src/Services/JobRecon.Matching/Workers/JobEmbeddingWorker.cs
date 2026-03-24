@@ -8,7 +8,9 @@ public sealed class JobEmbeddingWorker(
     ILogger<JobEmbeddingWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
-    private const int BatchSize = 50;
+    private const int FetchBatchSize = 100;
+    private const int MaxJobsPerCycle = 2000;
+    private const int MaxConcurrentEmbeddings = 4;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -43,31 +45,49 @@ public sealed class JobEmbeddingWorker(
 
         var offset = 0;
         var embedded = 0;
+        using var semaphore = new SemaphoreSlim(MaxConcurrentEmbeddings);
 
-        while (true)
+        while (offset < MaxJobsPerCycle)
         {
-            var jobsResponse = await jobsClient.GetActiveJobsAsync(BatchSize, offset, ct);
+            var jobsResponse = await jobsClient.GetActiveJobsAsync(FetchBatchSize, offset, ct);
             if (jobsResponse is null || jobsResponse.Jobs.Count == 0)
                 break;
 
-            foreach (var job in jobsResponse.Jobs)
+            // Batch check which jobs already have embeddings
+            var jobIds = jobsResponse.Jobs.Select(j => j.Id);
+            var existingIds = await vectorStore.FilterExistingAsync(jobIds, ct);
+            var newJobs = jobsResponse.Jobs.Where(j => !existingIds.Contains(j.Id)).ToList();
+
+            if (newJobs.Count > 0)
             {
-                if (await vectorStore.ExistsAsync(job.Id, ct))
-                    continue;
+                // Embed new jobs concurrently
+                var tasks = newJobs.Select(async job =>
+                {
+                    await semaphore.WaitAsync(ct);
+                    try
+                    {
+                        var text = BuildJobText(job);
+                        var embedding = await ollamaClient.GetEmbeddingAsync(text, ct);
+                        if (embedding is null)
+                            return false;
 
-                var text = BuildJobText(job);
-                var embedding = await ollamaClient.GetEmbeddingAsync(text, ct);
-                if (embedding is null)
-                    continue;
+                        await vectorStore.UpsertAsync(job.Id, embedding, ct);
+                        return true;
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
 
-                await vectorStore.UpsertAsync(job.Id, embedding, ct);
-                embedded++;
+                var results = await Task.WhenAll(tasks);
+                embedded += results.Count(r => r);
             }
 
-            offset += BatchSize;
+            offset += FetchBatchSize;
 
-            // Safety limit per cycle
-            if (offset >= 500)
+            // Stop early if we've processed all jobs
+            if (jobsResponse.Jobs.Count < FetchBatchSize)
                 break;
         }
 

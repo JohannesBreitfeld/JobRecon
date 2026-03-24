@@ -94,4 +94,28 @@ public sealed class QdrantVectorStore(
             return false;
         }
     }
+
+    public async Task<HashSet<Guid>> FilterExistingAsync(IEnumerable<Guid> jobIds, CancellationToken ct = default)
+    {
+        try
+        {
+            var pointIds = jobIds.Select(id => new PointId { Uuid = id.ToString() }).ToList();
+            var points = await client.RetrieveAsync(
+                CollectionName,
+                pointIds,
+                withPayload: false,
+                withVectors: false,
+                cancellationToken: ct);
+
+            return points
+                .Where(p => p.Id.HasUuid)
+                .Select(p => Guid.Parse(p.Id.Uuid))
+                .ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to batch check existing vectors, returning empty set");
+            return [];
+        }
+    }
 }

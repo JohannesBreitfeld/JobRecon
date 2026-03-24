@@ -107,6 +107,7 @@ public sealed class JobService : IJobService
         if (userId.HasValue)
         {
             var savedJobs = await _dbContext.SavedJobs
+                .AsNoTracking()
                 .Where(s => s.UserId == userId.Value)
                 .Select(s => new { s.JobId, s.Status })
                 .ToListAsync(cancellationToken);
@@ -193,6 +194,7 @@ public sealed class JobService : IJobService
             .Include(j => j.Company)
             .Include(j => j.JobSource)
             .Include(j => j.Tags)
+            .AsNoTracking()
             .FirstOrDefaultAsync(j => j.Id == jobId, cancellationToken);
 
         if (job is null)
@@ -204,6 +206,7 @@ public sealed class JobService : IJobService
         if (userId.HasValue)
         {
             savedJob = await _dbContext.SavedJobs
+                .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.UserId == userId.Value && s.JobId == jobId, cancellationToken);
         }
 
@@ -315,6 +318,7 @@ public sealed class JobService : IJobService
         var savedJobs = await _dbContext.SavedJobs
             .Include(s => s.Job)
                 .ThenInclude(j => j.Company)
+            .AsNoTracking()
             .Where(s => s.UserId == userId)
             .OrderByDescending(s => s.SavedAt)
             .ToListAsync(cancellationToken);
@@ -355,6 +359,7 @@ public sealed class JobService : IJobService
     {
         var job = await _dbContext.Jobs
             .Include(j => j.Company)
+            .AsNoTracking()
             .FirstOrDefaultAsync(j => j.Id == jobId, cancellationToken);
 
         if (job is null)
@@ -363,6 +368,7 @@ public sealed class JobService : IJobService
         }
 
         var existingSaved = await _dbContext.SavedJobs
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.UserId == userId && s.JobId == jobId, cancellationToken);
 
         if (existingSaved is not null)
@@ -574,6 +580,7 @@ public sealed class JobService : IJobService
     {
         var company = await _dbContext.Companies
             .Include(c => c.Jobs)
+            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == companyId, cancellationToken);
 
         if (company is null)

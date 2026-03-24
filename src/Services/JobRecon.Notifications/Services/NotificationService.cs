@@ -49,6 +49,7 @@ public class NotificationService : INotificationService
         CancellationToken ct = default)
     {
         var query = _dbContext.Notifications
+            .AsNoTracking()
             .Where(n => n.UserId == userId && n.Channel == NotificationChannel.InApp);
 
         if (unreadOnly == true)

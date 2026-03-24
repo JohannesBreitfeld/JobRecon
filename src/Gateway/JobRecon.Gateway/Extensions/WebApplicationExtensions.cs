@@ -18,6 +18,7 @@ public static class WebApplicationExtensions
             });
         }
 
+        app.UseResponseCompression();
         app.UseIpRateLimiting();
         app.UseCors();
         app.UseAuthentication();

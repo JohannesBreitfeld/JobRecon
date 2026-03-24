@@ -6,6 +6,7 @@ public interface IVectorStore
     Task UpsertAsync(Guid jobId, float[] embedding, CancellationToken ct = default);
     Task<List<VectorSearchResult>> SearchAsync(float[] queryVector, int limit, CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid jobId, CancellationToken ct = default);
+    Task<HashSet<Guid>> FilterExistingAsync(IEnumerable<Guid> jobIds, CancellationToken ct = default);
 }
 
 public sealed record VectorSearchResult(Guid JobId, float Score);

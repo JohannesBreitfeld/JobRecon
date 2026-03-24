@@ -1,7 +1,9 @@
+using System.IO.Compression;
 using System.Text;
 using AspNetCoreRateLimit;
 using JobRecon.Gateway.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using NSwag;
 
@@ -17,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddReverseProxy(configuration);
         services.AddRateLimiting(configuration);
         services.AddCorsPolicy(configuration);
+        services.AddResponseCompression(configuration);
         services.AddOpenApiDocumentation();
         services.AddHealthChecks();
 
@@ -103,6 +106,28 @@ public static class ServiceCollectionExtensions
                     .AllowCredentials();
             });
         });
+
+        return services;
+    }
+
+    private static IServiceCollection AddResponseCompression(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+            options.Providers.Add<BrotliCompressionProvider>();
+            options.Providers.Add<GzipCompressionProvider>();
+            options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+                ["application/json", "application/grpc"]);
+        });
+
+        services.Configure<BrotliCompressionProviderOptions>(options =>
+            options.Level = CompressionLevel.Fastest);
+
+        services.Configure<GzipCompressionProviderOptions>(options =>
+            options.Level = CompressionLevel.SmallestSize);
 
         return services;
     }

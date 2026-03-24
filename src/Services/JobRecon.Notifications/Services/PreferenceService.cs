@@ -70,6 +70,7 @@ public class PreferenceService : IPreferenceService
         var hourEnd = new TimeOnly(currentTime.Hour, 59, 59);
 
         return await _dbContext.NotificationPreferences
+            .AsNoTracking()
             .Where(p => p.DigestEnabled
                 && p.DigestFrequency == frequency
                 && p.DigestTime >= hourStart

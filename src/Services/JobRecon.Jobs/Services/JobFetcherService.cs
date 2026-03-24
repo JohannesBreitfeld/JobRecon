@@ -32,6 +32,7 @@ public sealed class JobFetcherService : IJobFetcherService
     public async Task FetchAllJobsAsync(CancellationToken cancellationToken = default)
     {
         var sources = await _dbContext.JobSources
+            .AsNoTracking()
             .Where(s => s.IsEnabled)
             .Where(s => s.LastFetchedAt == null ||
                 s.LastFetchedAt < DateTime.UtcNow.AddMinutes(-s.FetchIntervalMinutes))
@@ -78,6 +79,8 @@ public sealed class JobFetcherService : IJobFetcherService
 
             var fetchedJobs = await fetcher.FetchJobsAsync(source, cancellationToken);
             var newJobCount = 0;
+            var processedCount = 0;
+            const int persistBatchSize = 100;
 
             foreach (var fetchedJob in fetchedJobs)
             {
@@ -90,58 +93,70 @@ public sealed class JobFetcherService : IJobFetcherService
 
                 if (existingJob is not null)
                 {
-                    // Update existing job if hash changed
                     if (existingJob.Hash != jobHash)
                     {
                         UpdateJob(existingJob, fetchedJob, jobHash);
                     }
-                    continue;
+                    processedCount++;
                 }
-
-                // Create new job
-                var company = await GetOrCreateCompanyAsync(fetchedJob, cancellationToken);
-
-                var job = new Job
+                else
                 {
-                    Id = Guid.NewGuid(),
-                    Title = fetchedJob.Title,
-                    NormalizedTitle = fetchedJob.Title.ToLower(),
-                    Description = fetchedJob.Description,
-                    Location = fetchedJob.Location,
-                    WorkLocationType = fetchedJob.WorkLocationType,
-                    EmploymentType = fetchedJob.EmploymentType,
-                    SalaryMin = fetchedJob.SalaryMin,
-                    SalaryMax = fetchedJob.SalaryMax,
-                    SalaryCurrency = fetchedJob.SalaryCurrency ?? "SEK",
-                    SalaryPeriod = fetchedJob.SalaryPeriod,
-                    ExternalId = fetchedJob.ExternalId,
-                    ExternalUrl = fetchedJob.ExternalUrl,
-                    ApplicationUrl = fetchedJob.ApplicationUrl,
-                    RequiredSkills = fetchedJob.RequiredSkills,
-                    Benefits = fetchedJob.Benefits,
-                    ExperienceYearsMin = fetchedJob.ExperienceYearsMin,
-                    ExperienceYearsMax = fetchedJob.ExperienceYearsMax,
-                    PostedAt = fetchedJob.PostedAt ?? DateTime.UtcNow,
-                    ExpiresAt = fetchedJob.ExpiresAt,
-                    Status = JobStatus.Active,
-                    Hash = jobHash,
-                    CompanyId = company.Id,
-                    JobSourceId = sourceId
-                };
+                    var company = await GetOrCreateCompanyAsync(fetchedJob, cancellationToken);
 
-                foreach (var tag in fetchedJob.Tags)
-                {
-                    job.Tags.Add(new JobTag
+                    var job = new Job
                     {
                         Id = Guid.NewGuid(),
-                        Name = tag,
-                        NormalizedName = tag.ToLower(),
-                        JobId = job.Id
-                    });
+                        Title = fetchedJob.Title,
+                        NormalizedTitle = fetchedJob.Title.ToLower(),
+                        Description = fetchedJob.Description,
+                        Location = fetchedJob.Location,
+                        WorkLocationType = fetchedJob.WorkLocationType,
+                        EmploymentType = fetchedJob.EmploymentType,
+                        SalaryMin = fetchedJob.SalaryMin,
+                        SalaryMax = fetchedJob.SalaryMax,
+                        SalaryCurrency = fetchedJob.SalaryCurrency ?? "SEK",
+                        SalaryPeriod = fetchedJob.SalaryPeriod,
+                        ExternalId = fetchedJob.ExternalId,
+                        ExternalUrl = fetchedJob.ExternalUrl,
+                        ApplicationUrl = fetchedJob.ApplicationUrl,
+                        RequiredSkills = fetchedJob.RequiredSkills,
+                        Benefits = fetchedJob.Benefits,
+                        ExperienceYearsMin = fetchedJob.ExperienceYearsMin,
+                        ExperienceYearsMax = fetchedJob.ExperienceYearsMax,
+                        PostedAt = fetchedJob.PostedAt ?? DateTime.UtcNow,
+                        ExpiresAt = fetchedJob.ExpiresAt,
+                        Status = JobStatus.Active,
+                        Hash = jobHash,
+                        CompanyId = company.Id,
+                        JobSourceId = sourceId
+                    };
+
+                    foreach (var tag in fetchedJob.Tags)
+                    {
+                        job.Tags.Add(new JobTag
+                        {
+                            Id = Guid.NewGuid(),
+                            Name = tag,
+                            NormalizedName = tag.ToLower(),
+                            JobId = job.Id
+                        });
+                    }
+
+                    _dbContext.Jobs.Add(job);
+                    newJobCount++;
+                    processedCount++;
                 }
 
-                _dbContext.Jobs.Add(job);
-                newJobCount++;
+                // Persist in batches to limit memory usage
+                if (processedCount % persistBatchSize == 0)
+                {
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                    _dbContext.ChangeTracker.Clear();
+
+                    // Re-attach the source entity since we cleared the tracker
+                    source = await _dbContext.JobSources
+                        .FirstAsync(s => s.Id == sourceId, cancellationToken);
+                }
             }
 
             source.LastFetchedAt = DateTime.UtcNow;
