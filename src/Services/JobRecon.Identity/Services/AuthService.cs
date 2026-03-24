@@ -229,6 +229,101 @@ public sealed class AuthService : IAuthService
         });
     }
 
+    public async Task<Result> SendPasswordResetAsync(string email, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+
+        // Always return success to prevent email enumeration
+        if (user is null || !user.IsActive)
+        {
+            _logger.LogDebug("Password reset requested for unknown or inactive email");
+            return Result.Success();
+        }
+
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+        // In production, this token would be sent via the Notifications service.
+        // For now, log it so it can be used in development/testing.
+        _logger.LogInformation(
+            "Password reset token generated for user {UserId}. Token: {Token}",
+            user.Id, token);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            return Result.Failure(Error.Validation("Auth.InvalidToken", "Invalid or expired reset token."));
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return Result.Failure(Error.Validation("Auth.ResetFailed", errors));
+        }
+
+        user.RaiseDomainEvent(new PasswordChangedEvent(user.Id));
+        await _userManager.UpdateAsync(user);
+
+        _logger.LogInformation("Password reset successfully for user {UserId}", user.Id);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> ConfirmEmailAsync(ConfirmEmailRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId.ToString());
+        if (user is null)
+        {
+            return Result.Failure(Error.Validation("Auth.UserNotFound", "User not found."));
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return Result.Success();
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, request.Token);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            return Result.Failure(Error.Validation("Auth.ConfirmationFailed", errors));
+        }
+
+        user.RaiseDomainEvent(new EmailConfirmedEvent(user.Id, user.Email!));
+        await _userManager.UpdateAsync(user);
+
+        _logger.LogInformation("Email confirmed for user {UserId}", user.Id);
+
+        return Result.Success();
+    }
+
+    public async Task<Result> ResendEmailConfirmationAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId.ToString());
+        if (user is null)
+        {
+            return Result.Failure(Error.NotFound("Auth.UserNotFound", "User not found."));
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return Result.Success();
+        }
+
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+        _logger.LogInformation(
+            "Email confirmation token generated for user {UserId}. Token: {Token}",
+            user.Id, token);
+
+        return Result.Success();
+    }
+
     private async Task RevokeAllUserTokensAsync(Guid userId, CancellationToken cancellationToken)
     {
         var activeTokens = await _dbContext.RefreshTokens

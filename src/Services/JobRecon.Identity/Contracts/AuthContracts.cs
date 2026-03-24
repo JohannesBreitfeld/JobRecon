@@ -58,3 +58,35 @@ public sealed record UserInfo
     public required bool EmailConfirmed { get; init; }
     public required IReadOnlyList<string> Roles { get; init; }
 }
+
+public sealed record ForgotPasswordRequest
+{
+    [Required]
+    [EmailAddress]
+    public required string Email { get; init; }
+}
+
+public sealed record ResetPasswordRequest
+{
+    [Required]
+    [EmailAddress]
+    public required string Email { get; init; }
+
+    [Required]
+    public required string Token { get; init; }
+
+    [Required]
+    [MinLength(6)]
+    public required string NewPassword { get; init; }
+}
+
+public sealed record ConfirmEmailRequest
+{
+    [Required]
+    public required Guid UserId { get; init; }
+
+    [Required]
+    public required string Token { get; init; }
+}
+
+public sealed record MessageResponse(string Message);

@@ -52,6 +52,30 @@ public static class AuthEndpoints
             .RequireAuthorization()
             .Produces<UserInfo>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized);
+
+        group.MapPost("/forgot-password", ForgotPassword)
+            .WithName("ForgotPassword")
+            .WithSummary("Request a password reset email")
+            .Produces<MessageResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem();
+
+        group.MapPost("/reset-password", ResetPassword)
+            .WithName("ResetPassword")
+            .WithSummary("Reset password using a valid token")
+            .Produces<MessageResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem();
+
+        group.MapPost("/confirm-email", ConfirmEmail)
+            .WithName("ConfirmEmail")
+            .WithSummary("Confirm email address using a valid token")
+            .Produces<MessageResponse>(StatusCodes.Status200OK)
+            .ProducesValidationProblem();
+
+        group.MapPost("/resend-confirmation", ResendConfirmation)
+            .WithName("ResendConfirmation")
+            .WithSummary("Resend email confirmation")
+            .RequireAuthorization()
+            .Produces<MessageResponse>(StatusCodes.Status200OK);
     }
 
     private static async Task<IResult> Register(
@@ -158,6 +182,68 @@ public static class AuthEndpoints
         };
 
         return Results.Ok(userInfo);
+    }
+
+    private static async Task<IResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        [FromServices] IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        await authService.SendPasswordResetAsync(request.Email, cancellationToken);
+
+        // Always return success to prevent email enumeration
+        return Results.Ok(new MessageResponse("If an account with that email exists, a reset link has been sent."));
+    }
+
+    private static async Task<IResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        [FromServices] IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        var result = await authService.ResetPasswordAsync(request, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return Results.BadRequest(new { error = result.Error.Message });
+        }
+
+        return Results.Ok(new MessageResponse("Password has been reset successfully."));
+    }
+
+    private static async Task<IResult> ConfirmEmail(
+        [FromBody] ConfirmEmailRequest request,
+        [FromServices] IAuthService authService,
+        CancellationToken cancellationToken)
+    {
+        var result = await authService.ConfirmEmailAsync(request, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return Results.BadRequest(new { error = result.Error.Message });
+        }
+
+        return Results.Ok(new MessageResponse("Email confirmed successfully."));
+    }
+
+    private static async Task<IResult> ResendConfirmation(
+        [FromServices] IAuthService authService,
+        ClaimsPrincipal user,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId(user);
+        if (userId is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var result = await authService.ResendEmailConfirmationAsync(userId.Value, cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return Results.BadRequest(new { error = result.Error.Message });
+        }
+
+        return Results.Ok(new MessageResponse("Confirmation email has been sent."));
     }
 
     private static Guid? GetUserId(ClaimsPrincipal user)
