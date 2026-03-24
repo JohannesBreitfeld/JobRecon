@@ -1,0 +1,181 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# Default deny all ingress traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-default-deny
+  labels:
+    {{- include "jobrecon.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+
+---
+# Gateway: allow ingress from Ingress controller and frontend
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-gateway
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 6 }}
+  ingress:
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "frontend") | nindent 14 }}
+  policyTypes:
+    - Ingress
+
+---
+# Identity: allow from gateway only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-identity
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "identity") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "identity") | nindent 6 }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 14 }}
+    # Allow gRPC from matching and notifications
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "matching") | nindent 14 }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "notifications") | nindent 14 }}
+  policyTypes:
+    - Ingress
+
+---
+# Profile: allow from gateway and matching
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-profile
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "profile") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "profile") | nindent 6 }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 14 }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "matching") | nindent 14 }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "notifications") | nindent 14 }}
+  policyTypes:
+    - Ingress
+
+---
+# Jobs: allow from gateway and matching
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-jobs
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "jobs") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "jobs") | nindent 6 }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 14 }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "matching") | nindent 14 }}
+  policyTypes:
+    - Ingress
+
+---
+# Matching: allow from gateway only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-matching
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "matching") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "matching") | nindent 6 }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 14 }}
+  policyTypes:
+    - Ingress
+
+---
+# Notifications: allow from gateway only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-notifications
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "notifications") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "notifications") | nindent 6 }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 14 }}
+  policyTypes:
+    - Ingress
+
+---
+# Frontend: allow from Ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "jobrecon.fullname" . }}-frontend
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "frontend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "frontend") | nindent 6 }}
+  ingress:
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+  policyTypes:
+    - Ingress
+{{- end }}

@@ -1,0 +1,17 @@
+{{- $services := dict "gateway" .Values.gateway "identity" .Values.identity "profile" .Values.profile "frontend" .Values.frontend }}
+{{- range $name, $svc := $services }}
+{{- if and $svc.enabled (gt (int $svc.replicaCount) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "jobrecon.fullname" $ }}-{{ $name }}
+  labels:
+    {{- include "jobrecon.serviceLabels" (dict "Chart" $.Chart "Release" $.Release "component" $name) | nindent 4 }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" $.Chart "Release" $.Release "component" $name) | nindent 6 }}
+{{- end }}
+{{- end }}

@@ -16,6 +16,11 @@ identity:
   service:
     port: 80
     grpcPort: 5011
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
   resources:
     requests:
       cpu: 100m
@@ -33,6 +38,11 @@ profile:
   service:
     port: 80
     grpcPort: 5012
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
   resources:
     requests:
       cpu: 100m
@@ -50,6 +60,11 @@ jobs:
   service:
     port: 80
     grpcPort: 5013
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 70
   resources:
     requests:
       cpu: 100m
@@ -99,6 +114,11 @@ gateway:
   service:
     type: ClusterIP
     port: 80
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 8
+    targetCPUUtilizationPercentage: 60
   ingress:
     enabled: true
     className: traefik
@@ -140,6 +160,10 @@ frontend:
     limits:
       cpu: 100m
       memory: 128Mi
+
+# Network Policies - default deny + explicit allow rules
+networkPolicy:
+  enabled: false
 
 # Secrets - Values should be provided via --set or external secret management
 secrets:
