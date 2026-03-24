@@ -93,6 +93,12 @@ public class NotificationsDbContext : DbContext
                 .HasDatabaseName("ix_notifications_event_id")
                 .IsUnique()
                 .HasFilter("event_id IS NOT NULL");
+
+            entity.HasIndex(n => new { n.UserId, n.Channel, n.CreatedAt })
+                .HasDatabaseName("ix_notifications_user_channel_created");
+
+            entity.HasIndex(n => new { n.IsRead, n.CreatedAt })
+                .HasDatabaseName("ix_notifications_is_read_created");
         });
     }
 
@@ -152,6 +158,9 @@ public class NotificationsDbContext : DbContext
             entity.HasIndex(p => p.UserId)
                 .HasDatabaseName("ix_notification_preferences_user_id")
                 .IsUnique();
+
+            entity.HasIndex(p => new { p.DigestEnabled, p.DigestFrequency, p.DigestTime })
+                .HasDatabaseName("ix_notification_preferences_digest_schedule");
         });
     }
 
@@ -216,6 +225,9 @@ public class NotificationsDbContext : DbContext
 
             entity.HasIndex(d => d.QueuedAt)
                 .HasDatabaseName("ix_digest_queue_queued_at");
+
+            entity.HasIndex(d => new { d.IsProcessed, d.ProcessedAt })
+                .HasDatabaseName("ix_digest_queue_is_processed_processed_at");
         });
     }
 }

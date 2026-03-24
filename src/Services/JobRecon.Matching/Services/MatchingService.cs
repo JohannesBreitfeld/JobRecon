@@ -146,13 +146,15 @@ public sealed class MatchingService : IMatchingService
         CancellationToken ct)
     {
         var recommendations = new List<JobRecommendation>();
+
+        // Batch fetch all vector-matched jobs in a single gRPC call
+        var jobs = await _jobsClient.GetJobsByIdsAsync(vectorScores.Keys, ct);
+        var jobDict = jobs.ToDictionary(j => j.Id);
         var totalAnalyzed = 0;
 
-        // Fetch full details for vector-matched jobs and apply heuristic scoring
         foreach (var (jobId, vectorScore) in vectorScores)
         {
-            var job = await _jobsClient.GetJobAsync(jobId, ct);
-            if (job is null)
+            if (!jobDict.TryGetValue(jobId, out var job))
                 continue;
 
             totalAnalyzed++;

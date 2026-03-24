@@ -9,6 +9,7 @@ package jobrecon.jobs;
 service JobsGrpc {
   rpc GetActiveJobs (GetActiveJobsRequest) returns (JobListResponse);
   rpc GetJob (GetJobRequest) returns (JobResponse);
+  rpc GetJobsByIds (GetJobsByIdsRequest) returns (GetJobsByIdsResponse);
 }
 
 message GetActiveJobsRequest {
@@ -27,6 +28,14 @@ message GetJobRequest {
 
 message JobResponse {
   optional JobMessage job = 1;
+}
+
+message GetJobsByIdsRequest {
+  repeated string job_ids = 1;
+}
+
+message GetJobsByIdsResponse {
+  repeated JobMessage jobs = 1;
 }
 
 message JobMessage {

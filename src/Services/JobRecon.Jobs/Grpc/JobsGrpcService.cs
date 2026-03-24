@@ -66,6 +66,36 @@ public sealed class JobsGrpcService(
         return new JobResponse { Job = MapToMessage(job) };
     }
 
+    public override async Task<GetJobsByIdsResponse> GetJobsByIds(
+        GetJobsByIdsRequest request,
+        ServerCallContext context)
+    {
+        var jobIds = new List<Guid>(request.JobIds.Count);
+        foreach (var id in request.JobIds)
+        {
+            if (Guid.TryParse(id, out var parsed))
+                jobIds.Add(parsed);
+        }
+
+        var jobs = await dbContext.Jobs
+            .Include(j => j.Company)
+            .Include(j => j.Tags)
+            .Where(j => jobIds.Contains(j.Id))
+            .AsNoTracking()
+            .ToListAsync(context.CancellationToken);
+
+        logger.LogDebug("Returning {Count}/{Requested} jobs by IDs via gRPC",
+            jobs.Count, jobIds.Count);
+
+        var response = new GetJobsByIdsResponse();
+        foreach (var job in jobs)
+        {
+            response.Jobs.Add(MapToMessage(job));
+        }
+
+        return response;
+    }
+
     private static JobMessage MapToMessage(Job job)
     {
         var msg = new JobMessage

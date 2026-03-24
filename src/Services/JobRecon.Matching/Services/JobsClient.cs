@@ -49,6 +49,24 @@ public sealed class JobsClient(
         }
     }
 
+    public async Task<List<JobDto>> GetJobsByIdsAsync(IEnumerable<Guid> jobIds, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var request = new GetJobsByIdsRequest();
+            foreach (var id in jobIds)
+                request.JobIds.Add(id.ToString());
+
+            var response = await grpcClient.GetJobsByIdsAsync(request, cancellationToken: cancellationToken);
+            return response.Jobs.Select(MapToJobDto).ToList();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting {Count} jobs by IDs via gRPC", jobIds.Count());
+            return [];
+        }
+    }
+
     private static JobDto MapToJobDto(JobMessage msg)
     {
         return new JobDto(

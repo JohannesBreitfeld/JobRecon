@@ -22,4 +22,5 @@ public interface IJobsClient
 {
     Task<JobListDto?> GetActiveJobsAsync(int limit, int offset, CancellationToken cancellationToken = default);
     Task<JobDto?> GetJobAsync(Guid jobId, CancellationToken cancellationToken = default);
+    Task<List<JobDto>> GetJobsByIdsAsync(IEnumerable<Guid> jobIds, CancellationToken cancellationToken = default);
 }
