@@ -1,3 +1,5 @@
+import { translateError } from '../i18n/errors.sv';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
 interface RequestOptions extends RequestInit {
@@ -86,8 +88,13 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: 'Ett fel uppstod' }));
-      throw new ApiError(response.status, error.message || error.error || 'Ett fel uppstod');
+      const body = await response.json().catch(() => ({}));
+
+      // Extract error code from varying response shapes across services
+      const code: string | undefined = body.code ?? body.error?.code;
+      const message = translateError(code, undefined, response.status);
+
+      throw new ApiError(response.status, message, code);
     }
 
     if (response.status === 204) {
@@ -124,10 +131,12 @@ class ApiClient {
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
     this.name = 'ApiError';
   }
 }

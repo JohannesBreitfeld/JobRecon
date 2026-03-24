@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Inloggningen misslyckades';
+          const message = err instanceof Error ? err.message : 'Inloggningen misslyckades.';
           set({ error: message, isLoading: false });
           throw err;
         }
@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
         } catch (err) {
-          const message = err instanceof Error ? err.message : 'Registreringen misslyckades';
+          const message = err instanceof Error ? err.message : 'Registreringen misslyckades.';
           set({ error: message, isLoading: false });
           throw err;
         }
