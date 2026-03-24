@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Formats.Tar;
 using System.IO.Compression;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Domain;
@@ -11,6 +13,7 @@ namespace JobRecon.Jobs.Services.Fetchers;
 public sealed class JobTechLinksFetcher : IJobFetcher
 {
     private const string BaseDownloadUrl = "https://data.jobtechdev.se/annonser/jobtechlinks";
+    private const int MaxConcurrentDownloads = 3;
     private readonly HttpClient _httpClient;
     private readonly ILogger<JobTechLinksFetcher> _logger;
     private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
@@ -31,60 +34,95 @@ public sealed class JobTechLinksFetcher : IJobFetcher
                 TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 
-    public async Task<List<FetchedJob>> FetchJobsAsync(
+    public async IAsyncEnumerable<FetchedJobBatch> FetchJobBatchesAsync(
         JobSource source,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var jobs = new List<FetchedJob>();
+        var config = !string.IsNullOrEmpty(source.Configuration)
+            ? JsonSerializer.Deserialize<JobTechLinksConfig>(source.Configuration)
+            : new JobTechLinksConfig();
 
-        try
+        config ??= new JobTechLinksConfig();
+
+        var datesToFetch = GetDatesToFetch(config);
+
+        if (datesToFetch.Count == 0)
         {
-            var config = !string.IsNullOrEmpty(source.Configuration)
-                ? JsonSerializer.Deserialize<JobTechLinksConfig>(source.Configuration)
-                : new JobTechLinksConfig();
+            _logger.LogInformation("No new dates to fetch from JobTech Links");
+            yield break;
+        }
 
-            config ??= new JobTechLinksConfig();
+        _logger.LogInformation("Fetching {Count} date files from JobTech Links", datesToFetch.Count);
 
-            // Determine which dates to fetch
-            var datesToFetch = GetDatesToFetch(config);
+        // Download all date files in parallel, then yield results in date order
+        var downloadResults = await DownloadAllDatesAsync(datesToFetch, cancellationToken);
+        var totalJobs = 0;
 
-            foreach (var date in datesToFetch)
+        foreach (var date in datesToFetch)
+        {
+            if (!downloadResults.TryGetValue(date, out var jobs) || jobs.Count == 0)
+                continue;
+
+            // Enforce per-fetch limit
+            if (config.MaxJobsPerFetch > 0 && totalJobs + jobs.Count > config.MaxJobsPerFetch)
+            {
+                var remaining = config.MaxJobsPerFetch - totalJobs;
+                if (remaining <= 0)
+                {
+                    _logger.LogInformation("Reached max jobs limit of {Limit}, stopping fetch", config.MaxJobsPerFetch);
+                    break;
+                }
+                jobs = jobs.Take(remaining).ToList();
+            }
+
+            totalJobs += jobs.Count;
+            config.LastDownloadedDate = date.ToString("yyyy-MM-dd");
+
+            _logger.LogInformation("Yielding {Count} jobs from {Date}", jobs.Count, config.LastDownloadedDate);
+
+            yield return new FetchedJobBatch
+            {
+                Jobs = jobs,
+                CheckpointConfig = JsonSerializer.Serialize(config)
+            };
+        }
+
+        _logger.LogInformation("Total fetched {Count} jobs from JobTech Links", totalJobs);
+    }
+
+    private async Task<Dictionary<DateOnly, List<FetchedJob>>> DownloadAllDatesAsync(
+        List<DateOnly> dates,
+        CancellationToken cancellationToken)
+    {
+        var results = new ConcurrentDictionary<DateOnly, List<FetchedJob>>();
+        using var semaphore = new SemaphoreSlim(MaxConcurrentDownloads);
+
+        var tasks = dates.Select(async date =>
+        {
+            await semaphore.WaitAsync(cancellationToken);
+            try
             {
                 var dateStr = date.ToString("yyyy-MM-dd");
                 var downloadUrl = $"{BaseDownloadUrl}/{dateStr}.tar.gz";
 
                 _logger.LogInformation("Downloading JobTech Links file for {Date}", dateStr);
 
-                var fetchedJobs = await DownloadAndParseAsync(downloadUrl, cancellationToken);
-
-                if (fetchedJobs.Count > 0)
+                var jobs = await DownloadAndParseAsync(downloadUrl, cancellationToken);
+                if (jobs.Count > 0)
                 {
-                    jobs.AddRange(fetchedJobs);
-                    config.LastDownloadedDate = dateStr;
-                    _logger.LogInformation("Processed {Count} jobs from {Date}", fetchedJobs.Count, dateStr);
-                }
-
-                // Limit total jobs per fetch to avoid overwhelming the DB
-                if (config.MaxJobsPerFetch > 0 && jobs.Count >= config.MaxJobsPerFetch)
-                {
-                    _logger.LogInformation("Reached max jobs limit of {Limit}, stopping fetch", config.MaxJobsPerFetch);
-                    jobs = jobs.Take(config.MaxJobsPerFetch).ToList();
-                    break;
+                    results[date] = jobs;
+                    _logger.LogInformation("Processed {Count} jobs from {Date}", jobs.Count, dateStr);
                 }
             }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
 
-            // Update source configuration with last downloaded date
-            source.Configuration = JsonSerializer.Serialize(config);
+        await Task.WhenAll(tasks);
 
-            _logger.LogInformation("Total fetched {Count} jobs from JobTech Links", jobs.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching from JobTech Links");
-            throw;
-        }
-
-        return jobs;
+        return new Dictionary<DateOnly, List<FetchedJob>>(results);
     }
 
     private static List<DateOnly> GetDatesToFetch(JobTechLinksConfig config)
@@ -199,6 +237,7 @@ public sealed class JobTechLinksFetcher : IJobFetcher
             {
                 var lineCount = 0;
                 var parsedCount = 0;
+                var malformedCount = 0;
 
                 await foreach (var line in File.ReadLinesAsync(jsonFile, cancellationToken))
                 {
@@ -214,13 +253,30 @@ public sealed class JobTechLinksFetcher : IJobFetcher
                             parsedCount++;
                         }
                     }
-                    catch (JsonException)
+                    catch (JsonException ex)
                     {
-                        // Skip malformed lines
+                        malformedCount++;
+                        if (malformedCount <= 5)
+                        {
+                            var truncated = line.Length > 200 ? line[..200] + "..." : line;
+                            _logger.LogDebug(
+                                ex, "Malformed JSON at line {Line} in {File}: {Content}",
+                                lineCount, Path.GetFileName(jsonFile), truncated);
+                        }
                     }
                 }
 
-                _logger.LogInformation("Parsed {Parsed}/{Total} lines from {File}", parsedCount, lineCount, Path.GetFileName(jsonFile));
+                _logger.LogInformation(
+                    "Parsed {Parsed}/{Total} lines from {File} ({Malformed} malformed)",
+                    parsedCount, lineCount, Path.GetFileName(jsonFile), malformedCount);
+
+                // Warn if high failure rate — likely a schema change upstream
+                if (lineCount > 0 && malformedCount > lineCount * 0.1)
+                {
+                    _logger.LogWarning(
+                        "High malformed rate ({Malformed}/{Total} = {Rate:P0}) in {File} — possible schema change",
+                        malformedCount, lineCount, (double)malformedCount / lineCount, Path.GetFileName(jsonFile));
+                }
             }
         }
         finally

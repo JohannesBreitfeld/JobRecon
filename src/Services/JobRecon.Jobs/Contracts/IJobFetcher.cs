@@ -5,7 +5,17 @@ namespace JobRecon.Jobs.Contracts;
 public interface IJobFetcher
 {
     JobSourceType SourceType { get; }
-    Task<List<FetchedJob>> FetchJobsAsync(JobSource source, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<FetchedJobBatch> FetchJobBatchesAsync(JobSource source, CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// A batch of fetched jobs from a single logical unit (e.g., one date file).
+/// The service persists jobs and checkpoint data after each batch.
+/// </summary>
+public sealed class FetchedJobBatch
+{
+    public required List<FetchedJob> Jobs { get; init; }
+    public required string? CheckpointConfig { get; init; }
 }
 
 public sealed class FetchedJob
