@@ -114,7 +114,7 @@ export function JobDetailsDialog({ jobId, open, onClose }: JobDetailsDialogProps
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         {isLoading ? 'Laddar...' : selectedJob?.title || 'Jobbdetaljer'}
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={onClose} size="small" aria-label="Stang">
           <CloseIcon />
         </IconButton>
       </DialogTitle>

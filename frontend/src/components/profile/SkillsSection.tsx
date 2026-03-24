@@ -111,6 +111,7 @@ export function SkillsSection() {
                       size="small"
                       onClick={() => handleRemoveSkill(skill.id)}
                       disabled={isLoading}
+                      aria-label={`Ta bort ${skill.name}`}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

@@ -65,6 +65,10 @@ export function Navbar() {
               size="large"
               onClick={handleMenu}
               color="inherit"
+              aria-label="Kontomeny"
+              aria-controls={anchorEl ? 'account-menu' : undefined}
+              aria-haspopup="true"
+              aria-expanded={Boolean(anchorEl)}
             >
               {user?.firstName ? (
                 <Avatar sx={{ width: 32, height: 32 }}>
@@ -75,6 +79,7 @@ export function Navbar() {
               )}
             </IconButton>
             <Menu
+              id="account-menu"
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
               onClose={handleClose}

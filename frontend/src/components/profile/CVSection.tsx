@@ -190,6 +190,7 @@ export function CVSection() {
                   onClick={() => handleSetPrimary(doc.id)}
                   disabled={isLoading || doc.isPrimary}
                   title={doc.isPrimary ? 'Redan primärt' : 'Sätt som primärt'}
+                  aria-label={doc.isPrimary ? `${doc.fileName} ar redan primart` : `Satt ${doc.fileName} som primart`}
                 >
                   {doc.isPrimary ? <StarIcon color="primary" /> : <StarBorderIcon />}
                 </IconButton>
@@ -197,6 +198,7 @@ export function CVSection() {
                   onClick={() => handleDownload(doc.id)}
                   disabled={isLoading}
                   title="Ladda ner"
+                  aria-label={`Ladda ner ${doc.fileName}`}
                 >
                   <DownloadIcon />
                 </IconButton>
@@ -204,6 +206,7 @@ export function CVSection() {
                   onClick={() => handleDelete(doc.id)}
                   disabled={isLoading}
                   title="Ta bort"
+                  aria-label={`Ta bort ${doc.fileName}`}
                 >
                   <DeleteIcon />
                 </IconButton>
