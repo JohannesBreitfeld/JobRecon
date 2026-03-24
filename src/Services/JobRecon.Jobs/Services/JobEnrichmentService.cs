@@ -290,9 +290,9 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
                 }
             }
         }
-        catch
+        catch (Exception)
         {
-            // Parsing failed, return empty result
+            // HTML parsing is best-effort; return whatever we collected so far
         }
 
         return result;

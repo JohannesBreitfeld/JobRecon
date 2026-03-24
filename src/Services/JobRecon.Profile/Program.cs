@@ -17,7 +17,8 @@ builder.Services.AddOpenApiDocument(config =>
     config.Version = "v1";
 });
 
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<JobRecon.Profile.Infrastructure.ProfileDbContext>("database");
 
 var app = builder.Build();
 

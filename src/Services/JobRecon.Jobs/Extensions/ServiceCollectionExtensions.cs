@@ -7,6 +7,7 @@ using JobRecon.Jobs.Services;
 using JobRecon.Jobs.Services.Fetchers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Polly;
 using Polly.Extensions.Http;

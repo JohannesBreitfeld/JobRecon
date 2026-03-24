@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Notifications.Infrastructure;
 
-public class NotificationsDbContext : DbContext
+public sealed class NotificationsDbContext : DbContext
 {
     public NotificationsDbContext(DbContextOptions<NotificationsDbContext> options)
         : base(options)

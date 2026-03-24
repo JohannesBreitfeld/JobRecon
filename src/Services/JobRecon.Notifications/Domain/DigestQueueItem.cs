@@ -1,6 +1,6 @@
 namespace JobRecon.Notifications.Domain;
 
-public class DigestQueueItem
+public sealed class DigestQueueItem
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }

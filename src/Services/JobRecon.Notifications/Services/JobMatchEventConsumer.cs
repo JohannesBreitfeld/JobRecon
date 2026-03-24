@@ -10,7 +10,7 @@ using RabbitMQ.Client.Events;
 
 namespace JobRecon.Notifications.Services;
 
-public class JobMatchEventConsumer : BackgroundService, IJobMatchEventConsumer
+public sealed class JobMatchEventConsumer : BackgroundService, IJobMatchEventConsumer
 {
     private readonly RabbitMqSettings _settings;
     private readonly IServiceScopeFactory _scopeFactory;

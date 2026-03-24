@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Notifications.Services;
 
-public class PreferenceService : IPreferenceService
+public sealed class PreferenceService : IPreferenceService
 {
     private readonly NotificationsDbContext _dbContext;
     private readonly ILogger<PreferenceService> _logger;

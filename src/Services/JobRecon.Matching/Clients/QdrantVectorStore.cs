@@ -89,8 +89,9 @@ public sealed class QdrantVectorStore(
 
             return points.Count > 0;
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogDebug(ex, "Failed to check vector existence for job {JobId}", jobId);
             return false;
         }
     }

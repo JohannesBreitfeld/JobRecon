@@ -2,6 +2,7 @@ using Hangfire;
 using Hangfire.Dashboard;
 using JobRecon.Notifications.Infrastructure;
 using JobRecon.Notifications.Services;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Notifications.Extensions;
@@ -24,7 +25,12 @@ public static class WebApplicationExtensions
             Authorization = [new HangfireAuthorizationFilter()]
         });
 
-        app.MapHealthChecks("/health");
+        app.MapHealthChecks("/health/live", new HealthCheckOptions
+        {
+            Predicate = _ => false
+        });
+
+        app.MapHealthChecks("/health/ready");
 
         return app;
     }
@@ -52,7 +58,7 @@ public static class WebApplicationExtensions
     }
 }
 
-public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
+public sealed class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 {
     public bool Authorize(DashboardContext context)
     {

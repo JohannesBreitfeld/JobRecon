@@ -58,7 +58,7 @@ public sealed class AuthService : IAuthService
                 Error.Validation("User.CreationFailed", errors));
         }
 
-        await _userManager.AddToRoleAsync(user, "User");
+        await _userManager.AddToRoleAsync(user, Domain.Roles.User);
 
         user.RaiseDomainEvent(new UserRegisteredEvent(user.Id, user.Email!));
 

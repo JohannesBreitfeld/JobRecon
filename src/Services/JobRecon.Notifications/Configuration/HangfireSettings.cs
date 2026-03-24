@@ -1,6 +1,6 @@
 namespace JobRecon.Notifications.Configuration;
 
-public class HangfireSettings
+public sealed class HangfireSettings
 {
     public const string SectionName = "Hangfire";
 

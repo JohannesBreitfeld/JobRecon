@@ -7,7 +7,7 @@ using MimeKit;
 
 namespace JobRecon.Notifications.Services;
 
-public class EmailService : IEmailService
+public sealed class EmailService : IEmailService
 {
     private readonly EmailSettings _settings;
     private readonly ILogger<EmailService> _logger;

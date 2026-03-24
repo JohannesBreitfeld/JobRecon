@@ -1,6 +1,6 @@
 namespace JobRecon.Notifications.Domain;
 
-public class NotificationPreference
+public sealed class NotificationPreference
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }

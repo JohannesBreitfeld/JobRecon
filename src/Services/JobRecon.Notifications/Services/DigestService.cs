@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Notifications.Services;
 
-public class DigestService : IDigestService
+public sealed class DigestService : IDigestService
 {
     private readonly NotificationsDbContext _dbContext;
     private readonly IPreferenceService _preferenceService;

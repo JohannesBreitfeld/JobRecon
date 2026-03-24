@@ -50,9 +50,7 @@ public static class WebApplicationExtensions
 
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
-        string[] roles = ["Admin", "User"];
-
-        foreach (var role in roles)
+        foreach (var role in Roles.All)
         {
             if (!await roleManager.RoleExistsAsync(role))
             {

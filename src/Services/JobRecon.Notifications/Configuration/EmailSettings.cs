@@ -1,6 +1,6 @@
 namespace JobRecon.Notifications.Configuration;
 
-public class EmailSettings
+public sealed class EmailSettings
 {
     public const string SectionName = "Email";
 

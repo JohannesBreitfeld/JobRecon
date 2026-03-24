@@ -18,7 +18,8 @@ builder.Services.AddOpenApiDocument(config =>
 });
 
 // Add health checks
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<JobRecon.Notifications.Infrastructure.NotificationsDbContext>("database");
 
 var app = builder.Build();
 

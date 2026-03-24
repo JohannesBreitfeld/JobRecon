@@ -1,6 +1,6 @@
 namespace JobRecon.Notifications.Configuration;
 
-public class RabbitMqSettings
+public sealed class RabbitMqSettings
 {
     public const string SectionName = "RabbitMQ";
 

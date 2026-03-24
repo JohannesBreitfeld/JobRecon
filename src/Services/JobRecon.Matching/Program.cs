@@ -17,7 +17,8 @@ builder.Services.AddOpenApiDocument(config =>
 });
 
 // Add health checks
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddCheck<JobRecon.Matching.Clients.QdrantHealthCheck>("qdrant");
 
 var app = builder.Build();
 
@@ -33,6 +34,10 @@ app.UseAuthorization();
 
 // Map endpoints
 app.MapMatchingEndpoints();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false
+});
+app.MapHealthChecks("/health/ready");
 
 app.Run();

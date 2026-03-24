@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Notifications.Services;
 
-public class NotificationService : INotificationService
+public sealed class NotificationService : INotificationService
 {
     private readonly NotificationsDbContext _dbContext;
     private readonly ILogger<NotificationService> _logger;
@@ -123,9 +123,9 @@ public class NotificationService : INotificationService
             {
                 jobMatch = JsonSerializer.Deserialize<JobMatchData>(notification.Data);
             }
-            catch
+            catch (JsonException)
             {
-                // Ignore deserialization errors
+                // Data is not valid JSON for this notification type — safe to ignore
             }
         }
 
