@@ -7,7 +7,7 @@ public sealed class JobEmbeddingWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<JobEmbeddingWorker> logger) : BackgroundService
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(30);
     private const int FetchBatchSize = 100;
     private const int MaxJobsPerCycle = 2000;
     private const int MaxConcurrentEmbeddings = 4;

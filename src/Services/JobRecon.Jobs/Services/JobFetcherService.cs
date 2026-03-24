@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using JobRecon.Contracts.Events;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Domain;
 using JobRecon.Jobs.Infrastructure;
@@ -22,16 +23,19 @@ public sealed class JobFetcherService : IJobFetcherService
 
     private readonly JobsDbContext _dbContext;
     private readonly IEnumerable<IJobFetcher> _fetchers;
+    private readonly IJobEventPublisher _eventPublisher;
     private readonly ILogger<JobFetcherService> _logger;
     private readonly AsyncRetryPolicy _saveRetryPolicy;
 
     public JobFetcherService(
         JobsDbContext dbContext,
         IEnumerable<IJobFetcher> fetchers,
+        IJobEventPublisher eventPublisher,
         ILogger<JobFetcherService> logger)
     {
         _dbContext = dbContext;
         _fetchers = fetchers;
+        _eventPublisher = eventPublisher;
         _logger = logger;
 
         _saveRetryPolicy = Policy
@@ -162,6 +166,15 @@ public sealed class JobFetcherService : IJobFetcherService
             _logger.LogInformation(
                 "Fetched {TotalCount} jobs from {SourceName}, {NewCount} new",
                 totalJobCount, source.Name, newJobCount);
+
+            // Notify Matching service so it can embed new jobs immediately
+            if (newJobCount > 0)
+            {
+                await _eventPublisher.PublishJobsFetchedAsync(
+                    new JobsFetchedIntegrationEvent(
+                        Guid.NewGuid(), sourceId, totalJobCount, newJobCount, DateTime.UtcNow),
+                    cancellationToken);
+            }
         }
         catch (Exception ex)
         {

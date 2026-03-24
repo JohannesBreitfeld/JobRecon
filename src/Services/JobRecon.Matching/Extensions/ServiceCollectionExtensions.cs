@@ -74,8 +74,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(_ => new QdrantClient(qdrantSettings.Host, qdrantSettings.GrpcPort));
         services.AddSingleton<IVectorStore, QdrantVectorStore>();
 
-        // Background worker for embedding jobs
+        // Background workers
         services.AddHostedService<JobEmbeddingWorker>();
+        services.AddHostedService<JobsFetchedConsumer>();
 
         // Add memory cache for caching profile/job data
         services.AddMemoryCache();
