@@ -3,10 +3,12 @@ using Grpc.Core;
 using JobRecon.Jobs.Domain;
 using JobRecon.Jobs.Infrastructure;
 using JobRecon.Protos.Jobs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Jobs.Grpc;
 
+[Authorize]
 public sealed class JobsGrpcService(
     JobsDbContext dbContext,
     ILogger<JobsGrpcService> logger) : JobsGrpc.JobsGrpcBase

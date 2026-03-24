@@ -1,4 +1,5 @@
 using JobRecon.Domain.Common;
+using JobRecon.Domain.Identity.Events;
 using JobRecon.Identity.Contracts;
 using JobRecon.Identity.Domain;
 using JobRecon.Identity.Infrastructure;
@@ -59,6 +60,8 @@ public sealed class AuthService : IAuthService
 
         await _userManager.AddToRoleAsync(user, "User");
 
+        user.RaiseDomainEvent(new UserRegisteredEvent(user.Id, user.Email!));
+
         _logger.LogInformation("User {Email} registered successfully", request.Email);
 
         return await GenerateAuthResponseAsync(user, null, cancellationToken);
@@ -89,6 +92,7 @@ public sealed class AuthService : IAuthService
         }
 
         user.LastLoginAt = DateTime.UtcNow;
+        user.RaiseDomainEvent(new UserLoggedInEvent(user.Id));
         await _userManager.UpdateAsync(user);
 
         _logger.LogInformation("User {Email} logged in successfully", request.Email);

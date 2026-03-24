@@ -3,6 +3,8 @@ using JobRecon.Identity.Configuration;
 using JobRecon.Identity.Domain;
 using JobRecon.Identity.Infrastructure;
 using JobRecon.Identity.Services;
+using JobRecon.Domain.Common;
+using JobRecon.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -48,10 +50,15 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDbContext<IdentityDbContext>(options =>
+        services.AddScoped<DomainEventInterceptor>();
+
+        services.AddDbContext<IdentityDbContext>((sp, options) =>
+        {
             options.UseNpgsql(
                 configuration.GetConnectionString("DefaultConnection"),
-                npgsqlOptions => npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "identity")));
+                npgsqlOptions => npgsqlOptions.MigrationsHistoryTable("__EFMigrationsHistory", "identity"));
+            options.AddInterceptors(sp.GetRequiredService<DomainEventInterceptor>());
+        });
 
         return services;
     }
@@ -118,6 +125,8 @@ public static class ServiceCollectionExtensions
 
     private static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AuthService>());
+        services.AddScoped<IDomainEventDispatcher, MediatRDomainEventDispatcher>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
 

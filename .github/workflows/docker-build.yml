@@ -28,6 +28,15 @@ jobs:
           - service: profile
             context: .
             dockerfile: src/Services/JobRecon.Profile/Dockerfile
+          - service: jobs
+            context: .
+            dockerfile: src/Services/JobRecon.Jobs/Dockerfile
+          - service: matching
+            context: .
+            dockerfile: src/Services/JobRecon.Matching/Dockerfile
+          - service: notifications
+            context: .
+            dockerfile: src/Services/JobRecon.Notifications/Dockerfile
           - service: gateway
             context: .
             dockerfile: src/Gateway/JobRecon.Gateway/Dockerfile

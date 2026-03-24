@@ -30,6 +30,12 @@ spec:
               value: http://{{ include "jobrecon.fullname" . }}-identity:{{ .Values.identity.service.port }}
             - name: ReverseProxy__Clusters__profile__Destinations__default__Address
               value: http://{{ include "jobrecon.fullname" . }}-profile:{{ .Values.profile.service.port }}
+            - name: ReverseProxy__Clusters__jobs__Destinations__default__Address
+              value: http://{{ include "jobrecon.fullname" . }}-jobs:{{ .Values.jobs.service.port }}
+            - name: ReverseProxy__Clusters__matching__Destinations__default__Address
+              value: http://{{ include "jobrecon.fullname" . }}-matching:{{ .Values.matching.service.port }}
+            - name: ReverseProxy__Clusters__notifications__Destinations__default__Address
+              value: http://{{ include "jobrecon.fullname" . }}-notifications:{{ .Values.notifications.service.port }}
           livenessProbe:
             httpGet:
               path: /health/live

@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\JobRecon.Domain\JobRecon.Domain.csproj" />
     <ProjectReference Include="..\JobRecon.Contracts\JobRecon.Contracts.csproj" />
   </ItemGroup>

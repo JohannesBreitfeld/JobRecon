@@ -1,10 +1,12 @@
 using Grpc.Core;
 using JobRecon.Profile.Infrastructure;
 using JobRecon.Protos.Profile;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Profile.Grpc;
 
+[Authorize]
 public sealed class ProfileGrpcService(
     ProfileDbContext dbContext,
     ILogger<ProfileGrpcService> logger) : ProfileGrpc.ProfileGrpcBase

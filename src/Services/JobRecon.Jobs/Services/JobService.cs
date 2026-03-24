@@ -24,6 +24,15 @@ public sealed class JobService : IJobService
         JobSearchRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (request.SalaryMin.HasValue && request.SalaryMax.HasValue && request.SalaryMin > request.SalaryMax)
+            return Result.Failure<JobSearchResponse>(new Error("Jobs.InvalidSalaryRange", "SalaryMin cannot be greater than SalaryMax."));
+
+        if (request.SalaryMin is < 0 || request.SalaryMax is < 0)
+            return Result.Failure<JobSearchResponse>(new Error("Jobs.InvalidSalary", "Salary values must be non-negative."));
+
+        if (request.ExperienceYearsMax is < 0)
+            return Result.Failure<JobSearchResponse>(new Error("Jobs.InvalidExperience", "ExperienceYearsMax must be non-negative."));
+
         var query = _dbContext.Jobs
             .Include(j => j.Company)
             .Include(j => j.Tags)
@@ -205,6 +214,18 @@ public sealed class JobService : IJobService
         CreateJobRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (request.SalaryMin.HasValue && request.SalaryMax.HasValue && request.SalaryMin > request.SalaryMax)
+            return Result.Failure<JobResponse>(new Error("Jobs.InvalidSalaryRange", "SalaryMin cannot be greater than SalaryMax."));
+
+        if (request.SalaryMin is < 0 || request.SalaryMax is < 0)
+            return Result.Failure<JobResponse>(new Error("Jobs.InvalidSalary", "Salary values must be non-negative."));
+
+        if (request.ExperienceYearsMin.HasValue && request.ExperienceYearsMax.HasValue && request.ExperienceYearsMin > request.ExperienceYearsMax)
+            return Result.Failure<JobResponse>(new Error("Jobs.InvalidExperienceRange", "ExperienceYearsMin cannot be greater than ExperienceYearsMax."));
+
+        if (request.ExperienceYearsMin is < 0 || request.ExperienceYearsMax is < 0)
+            return Result.Failure<JobResponse>(new Error("Jobs.InvalidExperience", "Experience years must be non-negative."));
+
         var manualSource = await _dbContext.JobSources
             .FirstOrDefaultAsync(s => s.Type == JobSourceType.Manual, cancellationToken);
 
