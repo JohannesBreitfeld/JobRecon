@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Profile.Grpc;
 
-[Authorize]
+[AllowAnonymous]
 public sealed class ProfileGrpcService(
     ProfileDbContext dbContext,
     ILogger<ProfileGrpcService> logger) : ProfileGrpc.ProfileGrpcBase

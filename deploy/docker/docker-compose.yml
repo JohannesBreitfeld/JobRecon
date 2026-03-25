@@ -108,6 +108,11 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     # Uncomment for GPU support (NVIDIA)
     # deploy:
     #   resources:
@@ -116,6 +121,17 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+
+  ollama-init:
+    image: curlimages/curl:latest
+    container_name: jobrecon-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+    volumes:
+      - ../../scripts/ollama-init.sh:/ollama-init.sh:ro
+    entrypoint: ["sh", "/ollama-init.sh"]
 
   # ===================
   # Application Services
@@ -217,6 +233,12 @@ services:
         condition: service_healthy
       qdrant:
         condition: service_healthy
+      jobs:
+        condition: service_started
+      profile:
+        condition: service_started
+      ollama-init:
+        condition: service_completed_successfully
 
   notifications:
     build:

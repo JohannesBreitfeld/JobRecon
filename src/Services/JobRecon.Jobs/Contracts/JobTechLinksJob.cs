@@ -1,6 +1,70 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace JobRecon.Jobs.Contracts;
+
+/// <summary>
+/// Tolerates employmentType being either a plain string or an array of strings.
+/// Returns the first element when it's an array.
+/// </summary>
+public sealed class StringOrArrayConverter : JsonConverter<string?>
+{
+    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+            return reader.GetString();
+
+        if (reader.TokenType == JsonTokenType.StartArray)
+        {
+            string? first = null;
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+            {
+                if (first is null && reader.TokenType == JsonTokenType.String)
+                    first = reader.GetString();
+            }
+            return first;
+        }
+
+        reader.Skip();
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+    {
+        if (value is null) writer.WriteNullValue();
+        else writer.WriteStringValue(value);
+    }
+}
+
+/// <summary>
+/// Tolerates jobLocation being either an object, a plain string, or an array.
+/// Returns the first object when it's an array; returns null for plain strings.
+/// </summary>
+public sealed class JobLocationConverter : JsonConverter<JobTechLinksJobLocation?>
+{
+    public override JobTechLinksJobLocation? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.StartObject)
+            return JsonSerializer.Deserialize<JobTechLinksJobLocation>(ref reader, options);
+
+        if (reader.TokenType == JsonTokenType.StartArray)
+        {
+            JobTechLinksJobLocation? first = null;
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+            {
+                if (first is null && reader.TokenType == JsonTokenType.StartObject)
+                    first = JsonSerializer.Deserialize<JobTechLinksJobLocation>(ref reader, options);
+            }
+            return first;
+        }
+
+        reader.Skip();
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, JobTechLinksJobLocation? value, JsonSerializerOptions options)
+        => JsonSerializer.Serialize(writer, value, options);
+}
 
 /// <summary>
 /// Response from the daily JobTech Links tar.gz files.
@@ -261,9 +325,11 @@ public sealed class JobTechLinksOriginalPosting
     public JobTechLinksOrganization? HiringOrganization { get; set; }
 
     [JsonPropertyName("jobLocation")]
+    [JsonConverter(typeof(JobLocationConverter))]
     public JobTechLinksJobLocation? JobLocation { get; set; }
 
     [JsonPropertyName("employmentType")]
+    [JsonConverter(typeof(StringOrArrayConverter))]
     public string? EmploymentType { get; set; }
 
     [JsonPropertyName("datePosted")]

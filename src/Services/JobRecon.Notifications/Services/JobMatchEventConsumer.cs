@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using JobRecon.Notifications.Configuration;
@@ -12,6 +13,9 @@ namespace JobRecon.Notifications.Services;
 
 public sealed class JobMatchEventConsumer : BackgroundService, IJobMatchEventConsumer
 {
+    private const string RetryCountHeader = "x-retry-count";
+    private const int MaxRetries = 3;
+
     private readonly RabbitMqSettings _settings;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<JobMatchEventConsumer> _logger;
@@ -56,8 +60,25 @@ public sealed class JobMatchEventConsumer : BackgroundService, IJobMatchEventCon
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing message");
-                await _channel.BasicNackAsync(ea.DeliveryTag, false, true, stoppingToken);
+                var retryCount = GetRetryCount(ea.BasicProperties);
+                if (retryCount < MaxRetries)
+                {
+                    _logger.LogWarning(ex,
+                        "Error processing job-matched message, retry {Attempt}/{Max}",
+                        retryCount + 1, MaxRetries);
+
+                    var props = new BasicProperties { Persistent = true };
+                    props.Headers = new Dictionary<string, object?> { [RetryCountHeader] = (long)(retryCount + 1) };
+                    await _channel.BasicPublishAsync(
+                        _settings.Exchange, _settings.RoutingKey, true, props, ea.Body, stoppingToken);
+                }
+                else
+                {
+                    _logger.LogError(ex,
+                        "job-matched message exceeded max retries ({Max}), discarding", MaxRetries);
+                }
+
+                await _channel.BasicNackAsync(ea.DeliveryTag, false, false, stoppingToken);
             }
         };
 
@@ -71,6 +92,13 @@ public sealed class JobMatchEventConsumer : BackgroundService, IJobMatchEventCon
 
         // Keep the service running
         await Task.Delay(Timeout.Infinite, stoppingToken);
+    }
+
+    private static int GetRetryCount(IReadOnlyBasicProperties props)
+    {
+        if (props.Headers?.TryGetValue(RetryCountHeader, out var val) == true && val is long count)
+            return (int)count;
+        return 0;
     }
 
     private async Task InitializeRabbitMqAsync(CancellationToken ct)

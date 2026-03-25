@@ -2,7 +2,7 @@ namespace JobRecon.Matching.Contracts;
 
 public interface IMatchingService
 {
-    Task<RecommendationsResponse> GetRecommendationsAsync(
+    Task<RecommendationsResponse?> GetRecommendationsAsync(
         Guid userId,
         GetRecommendationsRequest request,
         CancellationToken cancellationToken = default);

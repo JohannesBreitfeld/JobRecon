@@ -52,7 +52,7 @@ public sealed class MatchingService : IMatchingService
         _logger = logger;
     }
 
-    public async Task<RecommendationsResponse> GetRecommendationsAsync(
+    public async Task<RecommendationsResponse?> GetRecommendationsAsync(
         Guid userId,
         GetRecommendationsRequest request,
         CancellationToken cancellationToken = default)
@@ -60,9 +60,8 @@ public sealed class MatchingService : IMatchingService
         var profile = await _profileClient.GetProfileAsync(userId, cancellationToken);
         if (profile == null)
         {
-            _logger.LogWarning("Profile not found for user {UserId}", userId);
-            return new RecommendationsResponse([], 0, request.Page, request.PageSize,
-                new MatchingSummary(0, 0, 0, [], []));
+            _logger.LogInformation("No profile found for user {UserId}, skipping recommendations", userId);
+            return null;
         }
 
         // Try vector-based pre-filtering first

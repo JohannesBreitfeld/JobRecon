@@ -14,6 +14,8 @@ public sealed class JobsFetchedConsumer : BackgroundService
 {
     private const string QueueName = "matching.jobs-fetched";
     private const string RoutingKey = "jobs.fetched";
+    private const string RetryCountHeader = "x-retry-count";
+    private const int MaxRetries = 3;
 
     private readonly RabbitMqSettings _settings;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -63,8 +65,25 @@ public sealed class JobsFetchedConsumer : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing jobs-fetched message");
-                await _channel.BasicNackAsync(ea.DeliveryTag, false, true, stoppingToken);
+                var retryCount = GetRetryCount(ea.BasicProperties);
+                if (retryCount < MaxRetries)
+                {
+                    _logger.LogWarning(ex,
+                        "Error processing jobs-fetched message, retry {Attempt}/{Max}",
+                        retryCount + 1, MaxRetries);
+
+                    var props = new BasicProperties { Persistent = true };
+                    props.Headers = new Dictionary<string, object?> { [RetryCountHeader] = (long)(retryCount + 1) };
+                    await _channel.BasicPublishAsync(
+                        _settings.Exchange, RoutingKey, true, props, ea.Body, stoppingToken);
+                }
+                else
+                {
+                    _logger.LogError(ex,
+                        "jobs-fetched message exceeded max retries ({Max}), discarding", MaxRetries);
+                }
+
+                await _channel.BasicNackAsync(ea.DeliveryTag, false, false, stoppingToken);
             }
         };
 
@@ -136,6 +155,13 @@ public sealed class JobsFetchedConsumer : BackgroundService
         {
             _logger.LogInformation("Event-triggered embedding: embedded {Count} jobs into vector store", embedded);
         }
+    }
+
+    private static int GetRetryCount(IReadOnlyBasicProperties props)
+    {
+        if (props.Headers?.TryGetValue(RetryCountHeader, out var val) == true && val is long count)
+            return (int)count;
+        return 0;
     }
 
     private async Task InitializeRabbitMqAsync(CancellationToken ct)

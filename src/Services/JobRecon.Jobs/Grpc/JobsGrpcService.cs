@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace JobRecon.Jobs.Grpc;
 
-[Authorize]
+[AllowAnonymous]
 public sealed class JobsGrpcService(
     JobsDbContext dbContext,
     ILogger<JobsGrpcService> logger) : JobsGrpc.JobsGrpcBase
