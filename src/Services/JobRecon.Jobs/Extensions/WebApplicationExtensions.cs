@@ -45,11 +45,11 @@ public static class WebApplicationExtensions
 
     public static void ConfigureRecurringJobs(this WebApplication app)
     {
-        // Fetch jobs daily at 6 AM (daily files are published once per day)
+        // Fetch jobs every hour (daily files are published once per day, but check hourly to pick up new files quickly)
         RecurringJob.AddOrUpdate<IJobFetcherService>(
             "fetch-all-jobs",
             service => service.FetchAllJobsAsync(CancellationToken.None),
-            "0 6 * * *"); // Daily at 6:00 AM
+            "0 * * * *"); // Every hour at minute 0
 
         // Enrich pending jobs every 15 minutes
         RecurringJob.AddOrUpdate<IJobEnrichmentService>(
