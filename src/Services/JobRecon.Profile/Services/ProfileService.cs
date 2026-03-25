@@ -128,11 +128,10 @@ public sealed class ProfileService : IProfileService
             {
                 var desiredJobTitle = new DesiredJobTitle
                 {
-                    Id = Guid.NewGuid(),
                     Title = title,
                     UserProfileId = profile.Id
                 };
-                profile.DesiredJobTitles.Add(desiredJobTitle);
+                _dbContext.DesiredJobTitles.Add(desiredJobTitle);
             }
         }
 
