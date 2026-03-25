@@ -1,7 +1,13 @@
+using System.Text.Json.Serialization;
 using JobRecon.Profile.Extensions;
 using JobRecon.Profile.Grpc;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
 
 builder.Services.AddProfileServices(builder.Configuration);
 builder.Services.AddProfileAuthentication(builder.Configuration);
