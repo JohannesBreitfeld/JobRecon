@@ -24,9 +24,9 @@
     <PackageReference Include="Hangfire.Core" Version="1.8.23" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
-    <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
-    <PackageReference Include="MailKit" Version="4.12.1" />
-    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.71.0" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
+    <PackageReference Include="MailKit" Version="4.15.1" />
+    <PackageReference Include="Grpc.Net.ClientFactory" Version="2.76.0" />
   </ItemGroup>
 
   <ItemGroup>
