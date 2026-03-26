@@ -9,7 +9,7 @@ public sealed class JobEmbeddingWorker(
 {
     private static readonly TimeSpan Interval = TimeSpan.FromMinutes(30);
     private const int FetchBatchSize = 100;
-    private const int MaxJobsPerCycle = 2000;
+    private const int MaxJobsPerCycle = 100_000;
     private const int MaxConcurrentEmbeddings = 4;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

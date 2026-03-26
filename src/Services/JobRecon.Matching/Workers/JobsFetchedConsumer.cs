@@ -110,7 +110,7 @@ public sealed class JobsFetchedConsumer : BackgroundService
         var offset = 0;
         var embedded = 0;
         const int batchSize = 100;
-        const int maxJobs = 2000;
+        const int maxJobs = 100_000;
         using var semaphore = new SemaphoreSlim(4);
 
         while (offset < maxJobs)
