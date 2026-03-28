@@ -33,6 +33,20 @@ export interface AuthResponse {
   user: UserInfo;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  token: string;
+  newPassword: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
 export const authApi = {
   register: (request: RegisterRequest): Promise<AuthResponse> =>
     apiClient.post('/api/auth/register', request, { skipAuth: true }),
@@ -51,4 +65,10 @@ export const authApi = {
 
   getCurrentUser: (): Promise<UserInfo> =>
     apiClient.get('/api/auth/me'),
+
+  forgotPassword: (request: ForgotPasswordRequest): Promise<MessageResponse> =>
+    apiClient.post('/api/auth/forgot-password', request, { skipAuth: true }),
+
+  resetPassword: (request: ResetPasswordRequest): Promise<MessageResponse> =>
+    apiClient.post('/api/auth/reset-password', request, { skipAuth: true }),
 };

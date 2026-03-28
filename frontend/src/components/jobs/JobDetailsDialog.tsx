@@ -29,6 +29,7 @@ import {
   Business as BusinessIcon,
 } from '@mui/icons-material';
 import { useJobsStore } from '../../stores/jobsStore';
+import { SkillChip } from './SkillChip';
 import type { WorkLocationType, EmploymentType, SavedJobStatus } from '../../api/jobs';
 
 const workLocationLabels: Record<WorkLocationType, string> = {
@@ -217,7 +218,7 @@ export function JobDetailsDialog({ jobId, open, onClose }: JobDetailsDialogProps
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {selectedJob.tags.map((tag) => (
-                    <Chip key={tag} label={tag} size="small" variant="outlined" />
+                    <SkillChip key={tag} skillName={tag} />
                   ))}
                 </Box>
               </Box>

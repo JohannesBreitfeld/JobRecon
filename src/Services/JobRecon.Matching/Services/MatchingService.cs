@@ -19,9 +19,9 @@ public sealed class MatchingService : IMatchingService
     // Heuristic scoring weights (sum to 1.0)
     private const double SkillWeight = 0.30;
     private const double TitleWeight = 0.25;
-    private const double LocationWeight = 0.15;
-    private const double SalaryWeight = 0.15;
-    private const double ExperienceWeight = 0.10;
+    private const double LocationWeight = 0.25;
+    private const double SalaryWeight = 0.10;
+    private const double ExperienceWeight = 0.05;
     private const double EmploymentTypeWeight = 0.05;
 
     // Blending weights (vector vs heuristic)
@@ -316,10 +316,10 @@ public sealed class MatchingService : IMatchingService
 
     private static double CalculateSkillScore(ProfileDto profile, JobDto job, out string description)
     {
-        if (profile.Skills.Count == 0 || string.IsNullOrEmpty(job.RequiredSkills))
+        if (profile.Skills.Count == 0)
         {
-            description = "No skill data available";
-            return 0.5; // Neutral score
+            description = "No skills in profile";
+            return 1.0;
         }
 
         var userSkills = profile.Skills
@@ -340,8 +340,8 @@ public sealed class MatchingService : IMatchingService
 
         if (allJobSkills.Count == 0)
         {
-            description = "Job has no specified skills";
-            return 0.5;
+            description = "Job has no specified skills — cannot verify match";
+            return 0.3;
         }
 
         var matchedSkills = allJobSkills
@@ -405,8 +405,15 @@ public sealed class MatchingService : IMatchingService
             }
         }
 
+        // No title data on either side — neutral
+        if (string.IsNullOrEmpty(profile.CurrentJobTitle) && profile.DesiredJobTitles.Count == 0)
+        {
+            description = "No title set in profile";
+            return 1.0;
+        }
+
         description = "No title match found";
-        return 0.3; // Base score for unmatched
+        return 0.3;
     }
 
     private static double CalculateTitleSimilarity(string title1, string title2)
@@ -466,40 +473,45 @@ public sealed class MatchingService : IMatchingService
             }
         }
 
-        // Check location match
-        if (!string.IsNullOrEmpty(job.Location))
+        // Check preferred locations — applies regardless of whether job has a location
+        if (prefs != null && !string.IsNullOrEmpty(prefs.PreferredLocations))
         {
-            var jobLocation = job.Location.ToLowerInvariant();
-
-            // Check preferred locations
-            if (prefs != null && !string.IsNullOrEmpty(prefs.PreferredLocations))
+            if (string.IsNullOrEmpty(job.Location))
             {
-                var preferredLocations = prefs.PreferredLocations
-                    .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries)
-                    .Select(l => l.Trim().ToLowerInvariant())
-                    .ToList();
-
-                if (preferredLocations.Any(pl => jobLocation.Contains(pl) || pl.Contains(jobLocation)))
-                {
-                    description = $"Location matches preference: {job.Location}";
-                    return 0.9;
-                }
+                description = "Job has no location — cannot verify against preferred areas";
+                return 0.3;
             }
 
-            // Check user's current location
-            if (!string.IsNullOrEmpty(profile.Location))
+            var jobLocation = job.Location.ToLowerInvariant();
+            var preferredLocations = prefs.PreferredLocations
+                .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries)
+                .Select(l => l.Trim().ToLowerInvariant())
+                .ToList();
+
+            if (preferredLocations.Any(pl => jobLocation.Contains(pl) || pl.Contains(jobLocation)))
             {
-                var userLocation = profile.Location.ToLowerInvariant();
-                if (jobLocation.Contains(userLocation) || userLocation.Contains(jobLocation))
-                {
-                    description = $"Near your location: {job.Location}";
-                    return 0.8;
-                }
+                description = $"Location matches preference: {job.Location}";
+                return 0.9;
+            }
+
+            description = $"Location ({job.Location}) outside preferred areas";
+            return 0.2;
+        }
+
+        // No preferred locations — use current location as a soft signal if available
+        if (!string.IsNullOrEmpty(profile.Location) && !string.IsNullOrEmpty(job.Location))
+        {
+            var userLocation = profile.Location.ToLowerInvariant();
+            var jobLocation = job.Location.ToLowerInvariant();
+            if (jobLocation.Contains(userLocation) || userLocation.Contains(jobLocation))
+            {
+                description = $"Near your location: {job.Location}";
+                return 0.8;
             }
         }
 
-        description = "Location not specified or no match";
-        return 0.5;
+        description = "No location data to match on";
+        return 1.0;
     }
 
     private static double CalculateSalaryScore(ProfileDto profile, JobDto job, out string description)
@@ -509,13 +521,13 @@ public sealed class MatchingService : IMatchingService
         if (prefs == null || (!prefs.MinSalary.HasValue && !prefs.MaxSalary.HasValue))
         {
             description = "No salary preference set";
-            return 0.5;
+            return 1.0;
         }
 
         if (!job.SalaryMin.HasValue && !job.SalaryMax.HasValue)
         {
             description = "Job salary not specified";
-            return 0.5;
+            return 1.0;
         }
 
         var userMin = prefs.MinSalary ?? 0;
@@ -523,33 +535,23 @@ public sealed class MatchingService : IMatchingService
         var jobMin = job.SalaryMin ?? 0;
         var jobMax = job.SalaryMax ?? job.SalaryMin ?? 0;
 
-        // Perfect match: job salary range overlaps with user preference
+        // Salary ranges overlap — strong positive signal
         if (jobMax >= userMin && jobMin <= userMax)
         {
-            var overlap = Math.Min(jobMax, userMax) - Math.Max(jobMin, userMin);
-            var userRange = userMax - userMin;
-
-            if (userRange > 0 && userRange < decimal.MaxValue)
-            {
-                var overlapRatio = overlap / userRange;
-                description = $"Salary range matches: {job.SalaryMin:N0}-{job.SalaryMax:N0} {job.SalaryCurrency}";
-                return Math.Min(1.0, 0.6 + (double)overlapRatio * 0.4);
-            }
-
-            description = $"Salary in range: {job.SalaryMin:N0}-{job.SalaryMax:N0} {job.SalaryCurrency}";
-            return 0.8;
+            description = $"Salary matches: {job.SalaryMin:N0}-{job.SalaryMax:N0} {job.SalaryCurrency}";
+            return 1.0;
         }
 
-        // Below minimum
-        if (jobMax < userMin)
+        // Job pays above user's max — still fine
+        if (jobMin > userMax)
         {
-            var gap = (userMin - jobMax) / userMin;
-            description = $"Below salary expectation ({job.SalaryMax:N0} < {userMin:N0})";
-            return Math.Max(0.1, 0.5 - (double)gap);
+            description = $"Salary above expected range ({job.SalaryMin:N0} > {userMax:N0})";
+            return 1.0;
         }
 
-        description = "Salary above expected range";
-        return 0.9; // Above max is usually fine
+        // Job pays below user's minimum — hard mismatch
+        description = $"Salary too low ({job.SalaryMax:N0} < {userMin:N0})";
+        return 0.1;
     }
 
     private static double CalculateExperienceScore(ProfileDto profile, JobDto job, out string description)
@@ -557,7 +559,7 @@ public sealed class MatchingService : IMatchingService
         if (!profile.YearsOfExperience.HasValue)
         {
             description = "Experience not specified in profile";
-            return 0.5;
+            return 1.0;
         }
 
         var userYears = profile.YearsOfExperience.Value;
@@ -602,13 +604,13 @@ public sealed class MatchingService : IMatchingService
         if (prefs == null || string.IsNullOrEmpty(prefs.PreferredEmploymentTypes))
         {
             description = "No employment type preference";
-            return 0.7;
+            return 1.0;
         }
 
         if (string.IsNullOrEmpty(job.EmploymentType))
         {
-            description = "Job employment type not specified";
-            return 0.5;
+            description = "Job employment type not specified — cannot verify match";
+            return 0.3;
         }
 
         var preferredTypes = prefs.PreferredEmploymentTypes

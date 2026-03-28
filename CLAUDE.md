@@ -60,6 +60,10 @@ Before making significant changes, ASK the user:
 - Changing authentication/authorization logic
 - Any security-related changes
 
+### File Issues for Out-of-Scope Discoveries
+
+When you discover bugs, missing features, or technical debt that is outside the scope of the current task, create a GitHub issue for it instead of fixing it inline. Use `gh issue create` with an appropriate title prefix (`bug:`, `feat:`, `chore:`) and include steps to reproduce, expected behavior, and root cause if known.
+
 ## C# Coding Conventions
 
 ### Naming
@@ -224,6 +228,10 @@ chore/update-dependencies
 - Keep PRs focused and small
 - Reference related issues
 - Ensure CI passes before requesting review
+
+### Close Issues on Push
+
+When working on a GitHub issue, always close it when pushing the fix. Use `Closes #<number>` or `Fixes #<number>` in the commit message or PR body so the issue is closed automatically when the branch is merged.
 
 ## Testing Guidelines
 

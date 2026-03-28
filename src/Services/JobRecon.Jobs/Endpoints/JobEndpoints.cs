@@ -28,6 +28,10 @@ public static class JobEndpoints
             .WithName("GetJobStatistics")
             .WithSummary("Get job statistics");
 
+        group.MapGet("/tags", GetTags)
+            .WithName("GetTags")
+            .WithSummary("Search distinct job tags");
+
         group.MapGet("/companies", GetCompanies)
             .WithName("GetCompanies")
             .WithSummary("Search companies");
@@ -123,6 +127,19 @@ public static class JobEndpoints
         }
 
         var result = await jobService.GetStatisticsAsync(userId, cancellationToken);
+
+        return result.IsSuccess
+            ? Results.Ok(result.Value)
+            : Results.BadRequest(result.Error);
+    }
+
+    private static async Task<IResult> GetTags(
+        [FromQuery] string? search,
+        [FromQuery] int limit,
+        IJobService jobService,
+        CancellationToken cancellationToken)
+    {
+        var result = await jobService.GetTagsAsync(search, limit > 0 ? limit : 50, cancellationToken);
 
         return result.IsSuccess
             ? Results.Ok(result.Value)

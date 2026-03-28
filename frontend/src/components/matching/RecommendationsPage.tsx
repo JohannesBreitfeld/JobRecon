@@ -15,11 +15,13 @@ import {
 } from '@mui/icons-material';
 import { useMatchingStore } from '../../stores/matchingStore';
 import { MatchCard } from './MatchCard';
+import { JobDetailsDialog } from '../jobs/JobDetailsDialog';
 
 export function RecommendationsPage() {
   const { results, isLoading, error, params, setParams, loadRecommendations, clearError } =
     useMatchingStore();
   const [minScoreFilter, setMinScoreFilter] = useState(params.minScore ?? 0.3);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   useEffect(() => {
     loadRecommendations();
@@ -132,8 +134,14 @@ export function RecommendationsPage() {
       )}
 
       {results?.recommendations.map((rec) => (
-        <MatchCard key={rec.jobId} recommendation={rec} />
+        <MatchCard key={rec.jobId} recommendation={rec} onJobClick={setSelectedJobId} />
       ))}
+
+      <JobDetailsDialog
+        jobId={selectedJobId}
+        open={selectedJobId !== null}
+        onClose={() => setSelectedJobId(null)}
+      />
 
       {totalPages > 1 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>

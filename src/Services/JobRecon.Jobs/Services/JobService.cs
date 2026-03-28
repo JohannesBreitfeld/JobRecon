@@ -602,6 +602,32 @@ public sealed class JobService : IJobService
         });
     }
 
+    public async Task<Result<List<string>>> GetTagsAsync(
+        string? search,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.JobTags
+            .Where(t => t.Job.Status == JobStatus.Active)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.ToLower();
+            query = query.Where(t => t.NormalizedName!.Contains(searchLower));
+        }
+
+        var tags = await query
+            .GroupBy(t => t.Name)
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key)
+            .Take(limit)
+            .Select(g => g.Key)
+            .ToListAsync(cancellationToken);
+
+        return Result.Success(tags);
+    }
+
     private static string ComputeJobHash(string? title, string? description, string? companyName, string? location, decimal? salaryMin, decimal? salaryMax)
     {
         var content = $"|{title}|{companyName}|{description}|{location}|{salaryMin}|{salaryMax}";

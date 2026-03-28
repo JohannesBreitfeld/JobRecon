@@ -51,6 +51,11 @@ public interface IJobService
     Task<Result<CompanyResponse>> GetCompanyAsync(
         Guid companyId,
         CancellationToken cancellationToken = default);
+
+    Task<Result<List<string>>> GetTagsAsync(
+        string? search,
+        int limit,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IJobSourceService

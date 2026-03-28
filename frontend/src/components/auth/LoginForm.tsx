@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -10,6 +11,7 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
+  Link,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { useAuthStore } from '../../stores/authStore';
@@ -74,7 +76,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
         autoComplete="current-password"
         error={!!errors.password}
         helperText={errors.password?.message}
-        sx={{ mb: 3 }}
+        sx={{ mb: 1 }}
         slotProps={{
           input: {
             endAdornment: (
@@ -90,6 +92,12 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           },
         }}
       />
+
+      <Box sx={{ textAlign: 'right', mb: 2 }}>
+        <Link component={RouterLink} to="/forgot-password" variant="body2">
+          Glömt lösenord?
+        </Link>
+      </Box>
 
       <Button
         type="submit"

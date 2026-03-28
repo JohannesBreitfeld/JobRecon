@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { profileApi } from '../api/profile';
+import { ApiError } from '../api/client';
 import type {
   ProfileResponse,
   CreateProfileRequest,
@@ -15,6 +16,7 @@ interface ProfileState {
   profile: ProfileResponse | null;
   isLoading: boolean;
   error: string | null;
+  profileNotFound: boolean;
 
   fetchProfile: () => Promise<void>;
   createProfile: (request: CreateProfileRequest) => Promise<void>;
@@ -33,15 +35,20 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   profile: null,
   isLoading: false,
   error: null,
+  profileNotFound: false,
 
   fetchProfile: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, error: null, profileNotFound: false });
     try {
       const profile = await profileApi.getProfile();
       set({ profile, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Kunde inte hämta profil';
-      set({ error: message, isLoading: false });
+      if (error instanceof ApiError && error.code === 'Profile.NotFound') {
+        set({ profileNotFound: true, isLoading: false });
+      } else {
+        const message = error instanceof Error ? error.message : 'Kunde inte hämta profil';
+        set({ error: message, isLoading: false });
+      }
     }
   },
 
@@ -49,7 +56,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const profile = await profileApi.createProfile(request);
-      set({ profile, isLoading: false });
+      set({ profile, isLoading: false, profileNotFound: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Kunde inte skapa profil';
       set({ error: message, isLoading: false });
@@ -211,5 +218,5 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
   clearError: () => set({ error: null }),
 
-  reset: () => set({ profile: null, isLoading: false, error: null }),
+  reset: () => set({ profile: null, isLoading: false, error: null, profileNotFound: false }),
 }));

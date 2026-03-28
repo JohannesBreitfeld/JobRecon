@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -17,9 +17,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Autocomplete,
+  CircularProgress,
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { useProfileStore } from '../../stores/profileStore';
+import { jobsApi } from '../../api/jobs';
 import type { SkillLevel, AddSkillRequest } from '../../api/profile';
 
 const skillLevelLabels: Record<SkillLevel, string> = {
@@ -42,11 +45,37 @@ export function SkillsSection() {
   const [newSkill, setNewSkill] = useState<AddSkillRequest>({
     name: '',
     level: 'Intermediate',
-    yearsOfExperience: undefined,
   });
 
+  const [tagOptions, setTagOptions] = useState<string[]>([]);
+  const [tagSearch, setTagSearch] = useState('');
+  const [tagsLoading, setTagsLoading] = useState(false);
+
+  const fetchTags = useCallback(async (search: string) => {
+    setTagsLoading(true);
+    try {
+      const tags = await jobsApi.getTags(search || undefined);
+      setTagOptions(tags);
+    } catch {
+      setTagOptions([]);
+    } finally {
+      setTagsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+
+    const debounce = setTimeout(() => {
+      fetchTags(tagSearch);
+    }, 300);
+
+    return () => clearTimeout(debounce);
+  }, [tagSearch, dialogOpen, fetchTags]);
+
   const handleOpenDialog = () => {
-    setNewSkill({ name: '', level: 'Intermediate', yearsOfExperience: undefined });
+    setNewSkill({ name: '', level: 'Intermediate' });
+    setTagSearch('');
     setDialogOpen(true);
   };
 
@@ -94,17 +123,12 @@ export function SkillsSection() {
                       <Typography variant="subtitle1" fontWeight="medium">
                         {skill.name}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5 }}>
+                      <Box sx={{ mt: 0.5 }}>
                         <Chip
                           label={skillLevelLabels[skill.level]}
                           size="small"
                           color={skillLevelColors[skill.level]}
                         />
-                        {skill.yearsOfExperience && (
-                          <Typography variant="body2" color="text.secondary">
-                            {skill.yearsOfExperience} år
-                          </Typography>
-                        )}
                       </Box>
                     </Box>
                     <IconButton
@@ -127,13 +151,40 @@ export function SkillsSection() {
         <DialogTitle>Lägg till kompetens</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              fullWidth
-              label="Kompetens"
-              value={newSkill.name}
-              onChange={(e) => setNewSkill((prev) => ({ ...prev, name: e.target.value }))}
+            <Autocomplete
+              freeSolo
+              options={tagOptions}
+              loading={tagsLoading}
+              inputValue={tagSearch}
+              onInputChange={(_event, value) => {
+                setTagSearch(value);
+                setNewSkill((prev) => ({ ...prev, name: value }));
+              }}
+              onChange={(_event, value) => {
+                if (typeof value === 'string') {
+                  setNewSkill((prev) => ({ ...prev, name: value }));
+                  setTagSearch(value);
+                }
+              }}
               disabled={isLoading}
-              placeholder="t.ex. React, Python, Projektledning"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Kompetens"
+                  placeholder="Sök eller skriv en kompetens"
+                  slotProps={{
+                    input: {
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {tagsLoading ? <CircularProgress color="inherit" size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    },
+                  }}
+                />
+              )}
             />
 
             <FormControl fullWidth>
@@ -153,21 +204,6 @@ export function SkillsSection() {
                 ))}
               </Select>
             </FormControl>
-
-            <TextField
-              fullWidth
-              label="År av erfarenhet"
-              type="number"
-              value={newSkill.yearsOfExperience || ''}
-              onChange={(e) =>
-                setNewSkill((prev) => ({
-                  ...prev,
-                  yearsOfExperience: e.target.value ? parseInt(e.target.value, 10) : undefined,
-                }))
-              }
-              disabled={isLoading}
-              slotProps={{ htmlInput: { min: 0, max: 50 } }}
-            />
           </Box>
         </DialogContent>
         <DialogActions>

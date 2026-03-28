@@ -183,4 +183,11 @@ export const jobsApi = {
 
   getJobSources: (): Promise<JobSourceResponse[]> =>
     apiClient.get('/api/jobs/sources'),
+
+  getTags: (search?: string, limit: number = 50): Promise<string[]> => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    params.append('limit', limit.toString());
+    return apiClient.get(`/api/jobs/tags?${params.toString()}`);
+  },
 };

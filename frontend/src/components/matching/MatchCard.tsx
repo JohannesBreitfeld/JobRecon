@@ -20,9 +20,10 @@ import { ScoreBreakdown } from './ScoreBreakdown';
 
 interface MatchCardProps {
   recommendation: JobRecommendation;
+  onJobClick: (jobId: string) => void;
 }
 
-export function MatchCard({ recommendation }: MatchCardProps) {
+export function MatchCard({ recommendation, onJobClick }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const scorePercent = Math.round(recommendation.matchScore * 100);
@@ -56,7 +57,12 @@ export function MatchCard({ recommendation }: MatchCardProps) {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="h6" component="h3">
+              <Typography
+                variant="h6"
+                component="h3"
+                onClick={() => onJobClick(recommendation.jobId)}
+                sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+              >
                 {recommendation.title}
               </Typography>
               {recommendation.externalUrl && (

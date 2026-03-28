@@ -20,10 +20,6 @@ export function ProfileForm() {
     currentJobTitle: '',
     summary: '',
     location: '',
-    phoneNumber: '',
-    linkedInUrl: '',
-    gitHubUrl: '',
-    portfolioUrl: '',
     yearsOfExperience: undefined,
     desiredJobTitles: [],
   });
@@ -36,10 +32,6 @@ export function ProfileForm() {
         currentJobTitle: profile.currentJobTitle || '',
         summary: profile.summary || '',
         location: profile.location || '',
-        phoneNumber: profile.phoneNumber || '',
-        linkedInUrl: profile.linkedInUrl || '',
-        gitHubUrl: profile.gitHubUrl || '',
-        portfolioUrl: profile.portfolioUrl || '',
         yearsOfExperience: profile.yearsOfExperience,
         desiredJobTitles: profile.desiredJobTitles || [],
       });
@@ -108,17 +100,6 @@ export function ProfileForm() {
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField
             fullWidth
-            label="Telefonnummer"
-            name="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={handleChange}
-            disabled={isLoading}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 6 }}>
-          <TextField
-            fullWidth
             label="År av erfarenhet"
             name="yearsOfExperience"
             type="number"
@@ -140,42 +121,6 @@ export function ProfileForm() {
             multiline
             rows={4}
             placeholder="Beskriv dig själv och din erfarenhet..."
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <TextField
-            fullWidth
-            label="LinkedIn URL"
-            name="linkedInUrl"
-            value={formData.linkedInUrl}
-            onChange={handleChange}
-            disabled={isLoading}
-            placeholder="https://linkedin.com/in/..."
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <TextField
-            fullWidth
-            label="GitHub URL"
-            name="gitHubUrl"
-            value={formData.gitHubUrl}
-            onChange={handleChange}
-            disabled={isLoading}
-            placeholder="https://github.com/..."
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 4 }}>
-          <TextField
-            fullWidth
-            label="Portfolio URL"
-            name="portfolioUrl"
-            value={formData.portfolioUrl}
-            onChange={handleChange}
-            disabled={isLoading}
-            placeholder="https://..."
           />
         </Grid>
 
