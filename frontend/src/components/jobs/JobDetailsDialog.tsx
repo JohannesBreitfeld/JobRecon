@@ -29,6 +29,7 @@ import {
   Business as BusinessIcon,
 } from '@mui/icons-material';
 import { useJobsStore } from '../../stores/jobsStore';
+import { useProfileStore } from '../../stores/profileStore';
 import { SkillChip } from './SkillChip';
 import type { WorkLocationType, EmploymentType, SavedJobStatus } from '../../api/jobs';
 
@@ -65,10 +66,12 @@ interface JobDetailsDialogProps {
 
 export function JobDetailsDialog({ jobId, open, onClose }: JobDetailsDialogProps) {
   const { selectedJob, loadJob, saveJob, removeSavedJob, updateSavedJob, clearSelectedJob, isLoading } = useJobsStore();
+  const { profile, fetchProfile } = useProfileStore();
 
   useEffect(() => {
     if (jobId && open) {
       loadJob(jobId);
+      if (!profile) fetchProfile();
     }
     return () => {
       clearSelectedJob();

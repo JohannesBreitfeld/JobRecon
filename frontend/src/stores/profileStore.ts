@@ -81,15 +81,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     try {
       const skill = await profileApi.addSkill(request);
       const currentProfile = get().profile;
-      if (currentProfile) {
-        set({
-          profile: {
-            ...currentProfile,
-            skills: [...currentProfile.skills, skill],
-          },
-          isLoading: false,
-        });
-      }
+      set({
+        profile: currentProfile
+          ? { ...currentProfile, skills: [...currentProfile.skills, skill] }
+          : currentProfile,
+        isLoading: false,
+      });
       return skill;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Kunde inte lägga till kompetens';
