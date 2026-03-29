@@ -1,9 +1,13 @@
+using System.Security.Cryptography;
+using System.Text;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
 
 namespace JobRecon.Profile.Grpc;
 
-public sealed class ApiKeyInterceptor(IConfiguration configuration) : Interceptor
+public sealed class ApiKeyInterceptor(
+    IConfiguration configuration,
+    ILogger<ApiKeyInterceptor> logger) : Interceptor
 {
     private const string ApiKeyHeader = "x-api-key";
 
@@ -15,11 +19,15 @@ public sealed class ApiKeyInterceptor(IConfiguration configuration) : Intercepto
         var expectedKey = configuration["GrpcApiKey"];
         if (string.IsNullOrEmpty(expectedKey))
         {
-            return await continuation(request, context);
+            logger.LogError("GrpcApiKey is not configured — rejecting all gRPC requests");
+            throw new RpcException(new Status(StatusCode.Unauthenticated, "API key not configured on server."));
         }
 
         var apiKey = context.RequestHeaders.GetValue(ApiKeyHeader);
-        if (apiKey != expectedKey)
+        var apiKeyBytes = Encoding.UTF8.GetBytes(apiKey ?? "");
+        var expectedBytes = Encoding.UTF8.GetBytes(expectedKey);
+
+        if (!CryptographicOperations.FixedTimeEquals(apiKeyBytes, expectedBytes))
         {
             throw new RpcException(new Status(StatusCode.Unauthenticated, "Invalid or missing API key."));
         }
