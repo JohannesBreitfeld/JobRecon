@@ -123,14 +123,14 @@ public static class NotificationEndpoints
     {
         if (string.IsNullOrWhiteSpace(token))
         {
-            return Results.BadRequest(new { error = "Token is required." });
+            return Results.BadRequest(new { code = "Unsubscribe.MissingToken", message = "Token is required." });
         }
 
         var success = await preferenceService.UnsubscribeByTokenAsync(token, ct);
 
         if (!success)
         {
-            return Results.NotFound(new { error = "Invalid or expired unsubscribe token." });
+            return Results.NotFound(new { code = "Unsubscribe.InvalidToken", message = "Invalid or expired unsubscribe token." });
         }
 
         return Results.Ok(new { message = "You have been unsubscribed from email notifications." });

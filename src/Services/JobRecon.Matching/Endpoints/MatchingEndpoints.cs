@@ -48,9 +48,8 @@ public static class MatchingEndpoints
             cancellationToken);
 
         if (result is null)
-            return Results.Problem(
-                title: "Profile not found",
-                detail: "Complete your profile before requesting recommendations.",
+            return Results.Json(
+                new { code = "Profile.NotFound", message = "Complete your profile before requesting recommendations." },
                 statusCode: StatusCodes.Status422UnprocessableEntity);
 
         return Results.Ok(result);

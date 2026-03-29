@@ -90,8 +90,7 @@ class ApiClient {
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
 
-      // Extract error code from varying response shapes across services
-      const code: string | undefined = body.code ?? body.error?.code;
+      const code: string | undefined = body.code;
       const message = translateError(code, undefined, response.status);
 
       throw new ApiError(response.status, message, code);

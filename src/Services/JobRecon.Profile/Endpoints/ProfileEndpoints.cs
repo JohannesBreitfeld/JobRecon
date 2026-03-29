@@ -73,7 +73,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.Ok(result.Value)
-            : Results.NotFound(new { error = result.Error });
+            : Results.NotFound(result.Error);
     }
 
     private static async Task<IResult> CreateProfile(
@@ -89,7 +89,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.Created($"/api/profile", result.Value)
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(result.Error);
     }
 
     private static async Task<IResult> UpdateProfile(
@@ -105,7 +105,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.Ok(result.Value)
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(result.Error);
     }
 
     private static async Task<IResult> AddSkill(
@@ -121,7 +121,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.Created($"/api/profile/skills/{result.Value!.Id}", result.Value)
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(result.Error);
     }
 
     private static async Task<IResult> RemoveSkill(
@@ -137,7 +137,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(result.Error);
     }
 
     private static async Task<IResult> GetPreferences(
@@ -152,7 +152,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.Ok(result.Value)
-            : Results.NotFound(new { error = result.Error });
+            : Results.NotFound(result.Error);
     }
 
     private static async Task<IResult> UpdatePreferences(
@@ -168,7 +168,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.Ok(result.Value)
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(result.Error);
     }
 
     private static async Task<IResult> UploadCV(
@@ -182,13 +182,13 @@ public static class ProfileEndpoints
 
         if (file.Length == 0)
         {
-            return Results.BadRequest(new { error = "File is empty" });
+            return Results.BadRequest(new { code = "CV.EmptyFile", message = "File is empty." });
         }
 
         const long maxFileSize = 10 * 1024 * 1024; // 10 MB
         if (file.Length > maxFileSize)
         {
-            return Results.BadRequest(new { error = "File size exceeds the 10 MB limit." });
+            return Results.BadRequest(new { code = "CV.FileTooLarge", message = "File size exceeds the 10 MB limit." });
         }
 
         var allowedTypes = new[] { "application/pdf", "application/msword",
@@ -196,7 +196,7 @@ public static class ProfileEndpoints
 
         if (!allowedTypes.Contains(file.ContentType))
         {
-            return Results.BadRequest(new { error = "Invalid file type. Only PDF and Word documents are allowed." });
+            return Results.BadRequest(new { code = "CV.InvalidFileType", message = "Invalid file type. Only PDF and Word documents are allowed." });
         }
 
         using var stream = file.OpenReadStream();
@@ -209,7 +209,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.Created($"/api/profile/cv/{result.Value!.Id}", result.Value)
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(result.Error);
     }
 
     private static async Task<IResult> DownloadCV(
@@ -225,7 +225,7 @@ public static class ProfileEndpoints
 
         if (!result.IsSuccess)
         {
-            return Results.NotFound(new { error = result.Error });
+            return Results.NotFound(result.Error);
         }
 
         var (fileStream, fileName, contentType) = result.Value;
@@ -245,7 +245,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(result.Error);
     }
 
     private static async Task<IResult> SetPrimaryCV(
@@ -261,7 +261,7 @@ public static class ProfileEndpoints
 
         return result.IsSuccess
             ? Results.NoContent()
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(result.Error);
     }
 
     private static Guid? GetUserId(ClaimsPrincipal user)

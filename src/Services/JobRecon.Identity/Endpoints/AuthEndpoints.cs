@@ -87,11 +87,10 @@ public static class AuthEndpoints
 
         if (result.IsFailure)
         {
-            var error = new { code = result.Error.Code, message = result.Error.Message };
             return result.Error.Code switch
             {
-                "User.EmailExists" => Results.Conflict(error),
-                _ => Results.BadRequest(error)
+                "User.EmailExists" => Results.Conflict(result.Error),
+                _ => Results.BadRequest(result.Error)
             };
         }
 
@@ -205,7 +204,7 @@ public static class AuthEndpoints
 
         if (result.IsFailure)
         {
-            return Results.BadRequest(new { code = result.Error.Code, message = result.Error.Message });
+            return Results.BadRequest(result.Error);
         }
 
         return Results.Ok(new MessageResponse("Password has been reset successfully."));
@@ -220,7 +219,7 @@ public static class AuthEndpoints
 
         if (result.IsFailure)
         {
-            return Results.BadRequest(new { code = result.Error.Code, message = result.Error.Message });
+            return Results.BadRequest(result.Error);
         }
 
         return Results.Ok(new MessageResponse("Email confirmed successfully."));
@@ -241,7 +240,7 @@ public static class AuthEndpoints
 
         if (result.IsFailure)
         {
-            return Results.BadRequest(new { code = result.Error.Code, message = result.Error.Message });
+            return Results.BadRequest(result.Error);
         }
 
         return Results.Ok(new MessageResponse("Confirmation email has been sent."));
