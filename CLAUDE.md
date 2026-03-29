@@ -50,6 +50,10 @@ JobRecon is a microservices-based job matching platform that helps users find re
 }
 ```
 
+### Always Run Tests Before Pushing
+
+> **Run `dotnet test` and verify all tests pass before pushing to origin. Never push with failing tests.**
+
 ### Always Ask First
 
 Before making significant changes, ASK the user:
