@@ -26,8 +26,10 @@ export function ProfileForm() {
 
   const [newJobTitle, setNewJobTitle] = useState('');
 
+  // Sync form state when profile loads asynchronously
   useEffect(() => {
     if (profile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         currentJobTitle: profile.currentJobTitle || '',
         summary: profile.summary || '',

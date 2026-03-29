@@ -39,9 +39,11 @@ export function PreferencesSection() {
     isActivelyLooking: true,
   });
 
+  // Sync form state when profile loads asynchronously
   useEffect(() => {
     if (profile?.jobPreference) {
       const pref = profile.jobPreference;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         minSalary: pref.minSalary,
         maxSalary: pref.maxSalary,
