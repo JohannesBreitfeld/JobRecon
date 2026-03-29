@@ -242,11 +242,9 @@ public sealed class AuthService : IAuthService
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
-        // In production, this token would be sent via the Notifications service.
-        // For now, log it so it can be used in development/testing.
         _logger.LogInformation(
-            "Password reset token generated for user {UserId}. Token: {Token}",
-            user.Id, token);
+            "Password reset token generated for user {UserId}",
+            user.Id);
 
         return Result.Success();
     }
@@ -318,8 +316,8 @@ public sealed class AuthService : IAuthService
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
         _logger.LogInformation(
-            "Email confirmation token generated for user {UserId}. Token: {Token}",
-            user.Id, token);
+            "Email confirmation token generated for user {UserId}",
+            user.Id);
 
         return Result.Success();
     }
