@@ -176,7 +176,9 @@ public static class JobEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
 
         var result = await jobService.GetSavedJobsAsync(userId, cancellationToken);
 
@@ -192,7 +194,9 @@ public static class JobEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
 
         var result = await jobService.SaveJobAsync(userId, jobId, request, cancellationToken);
 
@@ -210,7 +214,9 @@ public static class JobEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
 
         var result = await jobService.UpdateSavedJobAsync(userId, jobId, request, cancellationToken);
 
@@ -225,7 +231,9 @@ public static class JobEndpoints
         ClaimsPrincipal user,
         CancellationToken cancellationToken)
     {
-        var userId = Guid.Parse(user.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Results.Unauthorized();
 
         var result = await jobService.RemoveSavedJobAsync(userId, jobId, cancellationToken);
 
