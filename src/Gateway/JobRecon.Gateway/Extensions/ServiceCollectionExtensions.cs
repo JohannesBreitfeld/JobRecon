@@ -127,7 +127,7 @@ public static class ServiceCollectionExtensions
             options.Level = CompressionLevel.Fastest);
 
         services.Configure<GzipCompressionProviderOptions>(options =>
-            options.Level = CompressionLevel.SmallestSize);
+            options.Level = CompressionLevel.Fastest);
 
         return services;
     }
