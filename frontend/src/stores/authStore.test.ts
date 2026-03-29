@@ -109,7 +109,7 @@ describe('authStore', () => {
       vi.mocked(global.fetch).mockResolvedValueOnce({
         ok: false,
         status: 401,
-        json: () => Promise.resolve({ message: 'Ogiltiga inloggningsuppgifter' }),
+        json: () => Promise.resolve({ code: 'Auth.InvalidCredentials' }),
       } as Response);
 
       await expect(
@@ -123,7 +123,7 @@ describe('authStore', () => {
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
       expect(state.isLoading).toBe(false);
-      expect(state.error).toBe('Ogiltiga inloggningsuppgifter');
+      expect(state.error).toBe('Felaktig e-postadress eller losenord.');
     });
 
     it('should set default error message when login fails without message', async () => {
@@ -141,7 +141,7 @@ describe('authStore', () => {
       ).rejects.toThrow();
 
       const state = useAuthStore.getState();
-      expect(state.error).toBe('Ett fel uppstod');
+      expect(state.error).toBe('Ett ovantant serverfel uppstod. Forsok igen senare.');
     });
   });
 
@@ -173,7 +173,7 @@ describe('authStore', () => {
         ok: false,
         status: 409,
         json: () =>
-          Promise.resolve({ message: 'En användare med denna e-post finns redan' }),
+          Promise.resolve({ code: 'User.EmailExists' }),
       } as Response);
 
       await expect(
@@ -184,7 +184,7 @@ describe('authStore', () => {
       ).rejects.toThrow();
 
       const state = useAuthStore.getState();
-      expect(state.error).toBe('En användare med denna e-post finns redan');
+      expect(state.error).toBe('En anvandare med denna e-postadress finns redan.');
     });
   });
 
