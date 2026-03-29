@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
-using JobRecon.Notifications.Configuration;
 using JobRecon.Contracts.Events;
+using JobRecon.Infrastructure.Messaging;
 using JobRecon.Notifications.Contracts;
 using JobRecon.Notifications.Domain;
 using Microsoft.Extensions.Options;
@@ -94,26 +94,7 @@ public sealed class JobMatchEventConsumer : BackgroundService, IJobMatchEventCon
 
     private async Task InitializeRabbitMqAsync(CancellationToken ct)
     {
-        var factory = new ConnectionFactory
-        {
-            HostName = _settings.Host,
-            Port = _settings.Port,
-            UserName = _settings.Username,
-            Password = _settings.Password,
-            AutomaticRecoveryEnabled = true,
-            TopologyRecoveryEnabled = true
-        };
-
-        _connection = await factory.CreateConnectionAsync(ct);
-        _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
-
-        // Declare main exchange
-        await _channel.ExchangeDeclareAsync(
-            exchange: _settings.Exchange,
-            type: ExchangeType.Topic,
-            durable: true,
-            autoDelete: false,
-            cancellationToken: ct);
+        (_connection, _channel) = await RabbitMqChannelFactory.CreateAsync(_settings, ct);
 
         // Declare dead-letter exchange and queue
         await _channel.ExchangeDeclareAsync(

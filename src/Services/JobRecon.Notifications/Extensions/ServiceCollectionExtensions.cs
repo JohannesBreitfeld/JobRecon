@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.PostgreSql;
+using JobRecon.Infrastructure.Messaging;
 using JobRecon.Notifications.Configuration;
 using JobRecon.Notifications.Contracts;
 using JobRecon.Notifications.Infrastructure;

@@ -1,5 +1,6 @@
 using System.Text;
 using JobRecon.Matching.Clients;
+using JobRecon.Infrastructure.Messaging;
 using JobRecon.Matching.Configuration;
 using JobRecon.Matching.Contracts;
 using JobRecon.Matching.Services;

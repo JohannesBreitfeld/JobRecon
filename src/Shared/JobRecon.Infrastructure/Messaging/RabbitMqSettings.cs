@@ -1,4 +1,4 @@
-namespace JobRecon.Matching.Configuration;
+namespace JobRecon.Infrastructure.Messaging;
 
 public sealed class RabbitMqSettings
 {
@@ -9,5 +9,6 @@ public sealed class RabbitMqSettings
     public string Username { get; set; } = "guest";
     public string Password { get; set; } = "guest";
     public string Exchange { get; set; } = "jobrecon.events";
-    public string RoutingKey { get; set; } = "match.created";
+    public string Queue { get; set; } = "";
+    public string RoutingKey { get; set; } = "";
 }

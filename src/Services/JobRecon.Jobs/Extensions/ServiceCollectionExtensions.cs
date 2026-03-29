@@ -2,6 +2,7 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using JobRecon.Domain.Common;
 using JobRecon.Infrastructure.Persistence;
+using JobRecon.Infrastructure.Messaging;
 using JobRecon.Jobs.Configuration;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Infrastructure;
