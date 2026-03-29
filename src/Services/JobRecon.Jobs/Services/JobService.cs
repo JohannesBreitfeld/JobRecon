@@ -381,7 +381,6 @@ public sealed class JobService : IJobService
             Id = Guid.NewGuid(),
             UserId = userId,
             JobId = jobId,
-            Job = job,
             Notes = request.Notes,
             Status = SavedJobStatus.Saved,
             SavedAt = DateTime.UtcNow

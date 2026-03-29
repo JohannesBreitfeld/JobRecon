@@ -45,8 +45,7 @@ public class MatchingServiceTests
         var result = await _sut.GetRecommendationsAsync(userId, new GetRecommendationsRequest());
 
         // Assert
-        result.Recommendations.Should().BeEmpty();
-        result.TotalCount.Should().Be(0);
+        result.Should().BeNull();
     }
 
     [Fact]
