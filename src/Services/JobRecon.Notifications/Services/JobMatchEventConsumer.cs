@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using JobRecon.Notifications.Configuration;
@@ -13,8 +12,9 @@ namespace JobRecon.Notifications.Services;
 
 public sealed class JobMatchEventConsumer : BackgroundService, IJobMatchEventConsumer
 {
-    private const string RetryCountHeader = "x-retry-count";
-    private const int MaxRetries = 3;
+    private const string DeadLetterExchange = "jobrecon.dlx";
+    private const string DeadLetterRoutingKey = "dlq.notifications.job-matched";
+    private const string DeadLetterQueue = "dlq.notifications.job-matched";
 
     private readonly RabbitMqSettings _settings;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -34,122 +34,134 @@ public sealed class JobMatchEventConsumer : BackgroundService, IJobMatchEventCon
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await InitializeRabbitMqAsync(stoppingToken);
-
-        if (_channel is null)
-        {
-            _logger.LogWarning("RabbitMQ channel not initialized, event consumer will not run");
-            return;
-        }
-
-        var consumer = new AsyncEventingBasicConsumer(_channel);
-        consumer.ReceivedAsync += async (_, ea) =>
+        while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var body = ea.Body.ToArray();
-                var message = Encoding.UTF8.GetString(body);
-                var jobMatchedEvent = JsonSerializer.Deserialize<JobMatchedEvent>(message);
+                await InitializeRabbitMqAsync(stoppingToken);
 
-                if (jobMatchedEvent is not null)
+                if (_channel is null)
                 {
-                    await ProcessEventAsync(jobMatchedEvent, stoppingToken);
+                    _logger.LogWarning("RabbitMQ channel not initialized, retrying in 10s");
+                    await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+                    continue;
                 }
 
-                await _channel.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
+                var consumer = new AsyncEventingBasicConsumer(_channel);
+                consumer.ReceivedAsync += async (_, ea) =>
+                {
+                    try
+                    {
+                        var body = ea.Body.ToArray();
+                        var message = Encoding.UTF8.GetString(body);
+                        var jobMatchedEvent = JsonSerializer.Deserialize<JobMatchedEvent>(message);
+
+                        if (jobMatchedEvent is not null)
+                        {
+                            await ProcessEventAsync(jobMatchedEvent, stoppingToken);
+                        }
+
+                        await _channel.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing job-matched message, sending to DLQ");
+                        await _channel.BasicNackAsync(ea.DeliveryTag, false, false, stoppingToken);
+                    }
+                };
+
+                await _channel.BasicConsumeAsync(
+                    queue: _settings.Queue,
+                    autoAck: false,
+                    consumer: consumer,
+                    cancellationToken: stoppingToken);
+
+                _logger.LogInformation("Started consuming messages from queue {Queue}", _settings.Queue);
+
+                await Task.Delay(Timeout.Infinite, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {
-                var retryCount = GetRetryCount(ea.BasicProperties);
-                if (retryCount < MaxRetries)
-                {
-                    _logger.LogWarning(ex,
-                        "Error processing job-matched message, retry {Attempt}/{Max}",
-                        retryCount + 1, MaxRetries);
-
-                    var props = new BasicProperties { Persistent = true };
-                    props.Headers = new Dictionary<string, object?> { [RetryCountHeader] = (long)(retryCount + 1) };
-                    await _channel.BasicPublishAsync(
-                        _settings.Exchange, _settings.RoutingKey, true, props, ea.Body, stoppingToken);
-                }
-                else
-                {
-                    _logger.LogError(ex,
-                        "job-matched message exceeded max retries ({Max}), discarding", MaxRetries);
-                }
-
-                await _channel.BasicNackAsync(ea.DeliveryTag, false, false, stoppingToken);
+                _logger.LogError(ex, "Job-matched consumer loop failed, retrying in 10s");
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
-        };
-
-        await _channel.BasicConsumeAsync(
-            queue: _settings.Queue,
-            autoAck: false,
-            consumer: consumer,
-            cancellationToken: stoppingToken);
-
-        _logger.LogInformation("Started consuming messages from queue {Queue}", _settings.Queue);
-
-        // Keep the service running
-        await Task.Delay(Timeout.Infinite, stoppingToken);
-    }
-
-    private static int GetRetryCount(IReadOnlyBasicProperties props)
-    {
-        if (props.Headers?.TryGetValue(RetryCountHeader, out var val) == true && val is long count)
-            return (int)count;
-        return 0;
+        }
     }
 
     private async Task InitializeRabbitMqAsync(CancellationToken ct)
     {
-        try
+        var factory = new ConnectionFactory
         {
-            var factory = new ConnectionFactory
-            {
-                HostName = _settings.Host,
-                Port = _settings.Port,
-                UserName = _settings.Username,
-                Password = _settings.Password
-            };
+            HostName = _settings.Host,
+            Port = _settings.Port,
+            UserName = _settings.Username,
+            Password = _settings.Password,
+            AutomaticRecoveryEnabled = true,
+            TopologyRecoveryEnabled = true
+        };
 
-            _connection = await factory.CreateConnectionAsync(ct);
-            _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
+        _connection = await factory.CreateConnectionAsync(ct);
+        _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
 
-            // Declare exchange
-            await _channel.ExchangeDeclareAsync(
-                exchange: _settings.Exchange,
-                type: ExchangeType.Topic,
-                durable: true,
-                autoDelete: false,
-                cancellationToken: ct);
+        // Declare main exchange
+        await _channel.ExchangeDeclareAsync(
+            exchange: _settings.Exchange,
+            type: ExchangeType.Topic,
+            durable: true,
+            autoDelete: false,
+            cancellationToken: ct);
 
-            // Declare queue
-            await _channel.QueueDeclareAsync(
-                queue: _settings.Queue,
-                durable: true,
-                exclusive: false,
-                autoDelete: false,
-                cancellationToken: ct);
+        // Declare dead-letter exchange and queue
+        await _channel.ExchangeDeclareAsync(
+            exchange: DeadLetterExchange,
+            type: ExchangeType.Direct,
+            durable: true,
+            autoDelete: false,
+            cancellationToken: ct);
 
-            // Bind queue to exchange
-            await _channel.QueueBindAsync(
-                queue: _settings.Queue,
-                exchange: _settings.Exchange,
-                routingKey: _settings.RoutingKey,
-                cancellationToken: ct);
+        await _channel.QueueDeclareAsync(
+            queue: DeadLetterQueue,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            cancellationToken: ct);
 
-            // Set prefetch count
-            await _channel.BasicQosAsync(0, 10, false, ct);
+        await _channel.QueueBindAsync(
+            queue: DeadLetterQueue,
+            exchange: DeadLetterExchange,
+            routingKey: DeadLetterRoutingKey,
+            cancellationToken: ct);
 
-            _logger.LogInformation(
-                "Connected to RabbitMQ at {Host}:{Port}, queue: {Queue}",
-                _settings.Host, _settings.Port, _settings.Queue);
-        }
-        catch (Exception ex)
+        // Declare main queue with DLX routing
+        var queueArgs = new Dictionary<string, object?>
         {
-            _logger.LogError(ex, "Failed to connect to RabbitMQ");
-        }
+            ["x-dead-letter-exchange"] = DeadLetterExchange,
+            ["x-dead-letter-routing-key"] = DeadLetterRoutingKey
+        };
+
+        await _channel.QueueDeclareAsync(
+            queue: _settings.Queue,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: queueArgs,
+            cancellationToken: ct);
+
+        await _channel.QueueBindAsync(
+            queue: _settings.Queue,
+            exchange: _settings.Exchange,
+            routingKey: _settings.RoutingKey,
+            cancellationToken: ct);
+
+        await _channel.BasicQosAsync(0, 10, false, ct);
+
+        _logger.LogInformation(
+            "Connected to RabbitMQ at {Host}:{Port}, queue: {Queue}",
+            _settings.Host, _settings.Port, _settings.Queue);
     }
 
     private async Task ProcessEventAsync(JobMatchedEvent eventData, CancellationToken ct)

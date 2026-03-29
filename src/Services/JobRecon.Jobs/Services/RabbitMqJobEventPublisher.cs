@@ -84,7 +84,9 @@ public sealed class RabbitMqJobEventPublisher : IJobEventPublisher, IAsyncDispos
                 HostName = _settings.Host,
                 Port = _settings.Port,
                 UserName = _settings.Username,
-                Password = _settings.Password
+                Password = _settings.Password,
+                AutomaticRecoveryEnabled = true,
+                TopologyRecoveryEnabled = true
             };
 
             _connection = await factory.CreateConnectionAsync(ct);
