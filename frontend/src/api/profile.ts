@@ -18,7 +18,7 @@ export interface JobPreferenceResponse {
   isRemotePreferred: boolean;
   isHybridAccepted: boolean;
   isOnSiteAccepted: boolean;
-  preferredEmploymentType: EmploymentType;
+  preferredEmploymentTypes: EmploymentType;
   preferredIndustries?: string;
   excludedCompanies?: string;
   isActivelyLooking: boolean;
@@ -92,7 +92,7 @@ export interface UpdateJobPreferenceRequest {
   isRemotePreferred: boolean;
   isHybridAccepted: boolean;
   isOnSiteAccepted: boolean;
-  preferredEmploymentType: EmploymentType;
+  preferredEmploymentTypes: EmploymentType;
   preferredIndustries?: string;
   excludedCompanies?: string;
   isActivelyLooking: boolean;

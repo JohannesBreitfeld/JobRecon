@@ -10,7 +10,7 @@ public sealed class JobPreference
     public bool IsRemotePreferred { get; set; }
     public bool IsHybridAccepted { get; set; }
     public bool IsOnSiteAccepted { get; set; }
-    public EmploymentType PreferredEmploymentType { get; set; }
+    public EmploymentType PreferredEmploymentTypes { get; set; }
     public string? PreferredIndustries { get; set; }
     public string? ExcludedCompanies { get; set; }
     public bool IsActivelyLooking { get; set; } = true;

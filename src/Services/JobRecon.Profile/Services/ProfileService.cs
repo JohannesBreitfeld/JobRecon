@@ -274,7 +274,7 @@ public sealed class ProfileService : IProfileService
         pref.IsRemotePreferred = request.IsRemotePreferred;
         pref.IsHybridAccepted = request.IsHybridAccepted;
         pref.IsOnSiteAccepted = request.IsOnSiteAccepted;
-        pref.PreferredEmploymentType = request.PreferredEmploymentType;
+        pref.PreferredEmploymentTypes = request.PreferredEmploymentTypes;
         pref.PreferredIndustries = request.PreferredIndustries;
         pref.ExcludedCompanies = request.ExcludedCompanies;
         pref.IsActivelyLooking = request.IsActivelyLooking;
@@ -493,7 +493,7 @@ public sealed class ProfileService : IProfileService
             IsRemotePreferred = pref.IsRemotePreferred,
             IsHybridAccepted = pref.IsHybridAccepted,
             IsOnSiteAccepted = pref.IsOnSiteAccepted,
-            PreferredEmploymentType = pref.PreferredEmploymentType,
+            PreferredEmploymentTypes = pref.PreferredEmploymentTypes,
             PreferredIndustries = pref.PreferredIndustries,
             ExcludedCompanies = pref.ExcludedCompanies,
             IsActivelyLooking = pref.IsActivelyLooking,

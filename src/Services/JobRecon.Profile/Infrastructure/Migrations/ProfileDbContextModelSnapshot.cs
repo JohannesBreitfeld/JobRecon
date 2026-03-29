@@ -131,7 +131,7 @@ namespace JobRecon.Profile.Infrastructure.Migrations
                     b.Property<int?>("NoticePeriodDays")
                         .HasColumnType("integer");
 
-                    b.Property<string>("PreferredEmploymentType")
+                    b.Property<string>("PreferredEmploymentTypes")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");

@@ -78,7 +78,7 @@ public sealed class ProfileDbContext : DbContext
             entity.Property(e => e.PreferredLocations).HasMaxLength(1000);
             entity.Property(e => e.PreferredIndustries).HasMaxLength(1000);
             entity.Property(e => e.ExcludedCompanies).HasMaxLength(1000);
-            entity.Property(e => e.PreferredEmploymentType).HasConversion<string>().HasMaxLength(50);
+            entity.Property(e => e.PreferredEmploymentTypes).HasConversion<string>().HasMaxLength(50);
         });
 
         modelBuilder.Entity<CVDocument>(entity =>

@@ -301,7 +301,7 @@ public class ProfileServiceTests : IDisposable
             IsRemotePreferred = true,
             IsHybridAccepted = true,
             IsOnSiteAccepted = false,
-            PreferredEmploymentType = EmploymentType.FullTime,
+            PreferredEmploymentTypes = EmploymentType.FullTime,
             IsActivelyLooking = true
         };
 
@@ -337,7 +337,7 @@ public class ProfileServiceTests : IDisposable
             IsRemotePreferred = true,
             IsHybridAccepted = true,
             IsOnSiteAccepted = true,
-            PreferredEmploymentType = EmploymentType.FullTime,
+            PreferredEmploymentTypes = EmploymentType.FullTime,
             IsActivelyLooking = true
         };
 

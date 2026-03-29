@@ -76,7 +76,7 @@ public sealed class ProfileGrpcService(
                 IsOnSiteAccepted = pref.IsOnSiteAccepted,
                 IsActivelyLooking = pref.IsActivelyLooking,
                 PreferredLocations = pref.PreferredLocations ?? "",
-                PreferredEmploymentTypes = pref.PreferredEmploymentType.ToString(),
+                PreferredEmploymentTypes = pref.PreferredEmploymentTypes.ToString(),
                 PreferredIndustries = pref.PreferredIndustries ?? "",
                 ExcludedCompanies = pref.ExcludedCompanies ?? ""
             };

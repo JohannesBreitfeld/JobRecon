@@ -34,8 +34,9 @@ export function PreferencesSection() {
     isRemotePreferred: false,
     isHybridAccepted: true,
     isOnSiteAccepted: true,
-    preferredEmploymentType: 'FullTime',
+    preferredEmploymentTypes: 'FullTime',
     excludedCompanies: '',
+    isActivelyLooking: true,
   });
 
   useEffect(() => {
@@ -48,8 +49,9 @@ export function PreferencesSection() {
         isRemotePreferred: pref.isRemotePreferred,
         isHybridAccepted: pref.isHybridAccepted,
         isOnSiteAccepted: pref.isOnSiteAccepted,
-        preferredEmploymentType: pref.preferredEmploymentType,
+        preferredEmploymentTypes: pref.preferredEmploymentTypes,
         excludedCompanies: pref.excludedCompanies || '',
+        isActivelyLooking: pref.isActivelyLooking,
       });
     }
   }, [profile]);
@@ -121,13 +123,13 @@ export function PreferencesSection() {
           <FormControl fullWidth>
             <InputLabel>Önskad anställningstyp</InputLabel>
             <Select
-              name="preferredEmploymentType"
-              value={formData.preferredEmploymentType}
+              name="preferredEmploymentTypes"
+              value={formData.preferredEmploymentTypes}
               label="Önskad anställningstyp"
               onChange={(e) =>
                 setFormData((prev) => ({
                   ...prev,
-                  preferredEmploymentType: e.target.value as EmploymentType,
+                  preferredEmploymentTypes: e.target.value as EmploymentType,
                 }))
               }
               disabled={isLoading}

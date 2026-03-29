@@ -77,7 +77,7 @@ public sealed record UpdateJobPreferenceRequest
     public bool IsRemotePreferred { get; init; }
     public bool IsHybridAccepted { get; init; }
     public bool IsOnSiteAccepted { get; init; }
-    public EmploymentType PreferredEmploymentType { get; init; }
+    public EmploymentType PreferredEmploymentTypes { get; init; }
     public string? PreferredIndustries { get; init; }
     public string? ExcludedCompanies { get; init; }
     public bool IsActivelyLooking { get; init; } = true;
@@ -94,7 +94,7 @@ public sealed record JobPreferenceResponse
     public required bool IsRemotePreferred { get; init; }
     public required bool IsHybridAccepted { get; init; }
     public required bool IsOnSiteAccepted { get; init; }
-    public required EmploymentType PreferredEmploymentType { get; init; }
+    public required EmploymentType PreferredEmploymentTypes { get; init; }
     public string? PreferredIndustries { get; init; }
     public string? ExcludedCompanies { get; init; }
     public required bool IsActivelyLooking { get; init; }
