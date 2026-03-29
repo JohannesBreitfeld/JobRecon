@@ -1,3 +1,4 @@
+using System.Net;
 using System.Reflection;
 using JobRecon.Notifications.Configuration;
 using JobRecon.Notifications.Contracts;
@@ -33,12 +34,12 @@ public sealed class EmailService : IEmailService
         var template = await LoadTemplateAsync("JobMatchEmail.html");
 
         var body = template
-            .Replace("{{JobTitle}}", match.JobTitle)
-            .Replace("{{CompanyName}}", match.CompanyName)
-            .Replace("{{Location}}", match.Location ?? "Not specified")
+            .Replace("{{JobTitle}}", WebUtility.HtmlEncode(match.JobTitle))
+            .Replace("{{CompanyName}}", WebUtility.HtmlEncode(match.CompanyName))
+            .Replace("{{Location}}", WebUtility.HtmlEncode(match.Location ?? "Not specified"))
             .Replace("{{MatchScore}}", $"{match.MatchScore:P0}")
             .Replace("{{TopFactors}}", FormatMatchFactors(match.TopFactors))
-            .Replace("{{JobUrl}}", match.JobUrl ?? "#");
+            .Replace("{{JobUrl}}", SanitizeUrl(match.JobUrl));
 
         body = AppendUnsubscribeFooter(body, unsubscribeToken);
 
@@ -208,7 +209,7 @@ public sealed class EmailService : IEmailService
         }
 
         var items = factors.Select(f =>
-            $"<li><strong>{f.Category}</strong>: {f.Score:P0} - {f.Description ?? "Good match"}</li>");
+            $"<li><strong>{WebUtility.HtmlEncode(f.Category)}</strong>: {f.Score:P0} - {WebUtility.HtmlEncode(f.Description ?? "Good match")}</li>");
 
         return $"<ul>{string.Join("\n", items)}</ul>";
     }
@@ -217,10 +218,21 @@ public sealed class EmailService : IEmailService
     {
         return $"""
             <div style="border:1px solid #ddd;padding:10px;margin:10px 0;">
-                <h3><a href="{job.JobUrl ?? "#"}">{job.JobTitle}</a></h3>
-                <p><strong>{job.CompanyName}</strong> - {job.Location ?? "Location not specified"}</p>
+                <h3><a href="{SanitizeUrl(job.JobUrl)}">{WebUtility.HtmlEncode(job.JobTitle)}</a></h3>
+                <p><strong>{WebUtility.HtmlEncode(job.CompanyName)}</strong> - {WebUtility.HtmlEncode(job.Location ?? "Location not specified")}</p>
                 <p>Match Score: {job.MatchScore:P0}</p>
             </div>
             """;
+    }
+
+    private static string SanitizeUrl(string? url)
+    {
+        if (url is null)
+            return "#";
+
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
+            ? WebUtility.HtmlEncode(url)
+            : "#";
     }
 }
