@@ -78,9 +78,6 @@ public static class ServiceCollectionExtensions
         services.AddHostedService<JobEmbeddingWorker>();
         services.AddHostedService<JobsFetchedConsumer>();
 
-        // Add memory cache for caching profile/job data
-        services.AddMemoryCache();
-
         return services;
     }
 

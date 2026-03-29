@@ -2,8 +2,6 @@ using JobRecon.Matching.Clients;
 using JobRecon.Contracts.Events;
 using JobRecon.Matching.Contracts;
 using JobRecon.Matching.Workers;
-using Microsoft.Extensions.Caching.Memory;
-
 namespace JobRecon.Matching.Services;
 
 public sealed class MatchingService : IMatchingService
@@ -13,7 +11,6 @@ public sealed class MatchingService : IMatchingService
     private readonly IEventPublisher _eventPublisher;
     private readonly IOllamaClient _ollamaClient;
     private readonly IVectorStore _vectorStore;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<MatchingService> _logger;
 
     // Heuristic scoring weights (sum to 1.0)
@@ -40,7 +37,6 @@ public sealed class MatchingService : IMatchingService
         IEventPublisher eventPublisher,
         IOllamaClient ollamaClient,
         IVectorStore vectorStore,
-        IMemoryCache cache,
         ILogger<MatchingService> logger)
     {
         _profileClient = profileClient;
@@ -48,7 +44,6 @@ public sealed class MatchingService : IMatchingService
         _eventPublisher = eventPublisher;
         _ollamaClient = ollamaClient;
         _vectorStore = vectorStore;
-        _cache = cache;
         _logger = logger;
     }
 
@@ -326,7 +321,7 @@ public sealed class MatchingService : IMatchingService
             .Select(s => s.Name.ToLowerInvariant().Trim())
             .ToHashSet();
 
-        var jobSkills = job.RequiredSkills
+        var jobSkills = (job.RequiredSkills ?? "")
             .Split([',', ';', '|'], StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.ToLowerInvariant().Trim())
             .ToList();
