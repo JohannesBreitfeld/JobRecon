@@ -323,30 +323,7 @@ public sealed class JobService : IJobService
             .OrderByDescending(s => s.SavedAt)
             .ToListAsync(cancellationToken);
 
-        var responses = savedJobs.Select(s => new SavedJobResponse
-        {
-            Id = s.Id,
-            Status = s.Status,
-            Notes = s.Notes,
-            AppliedAt = s.AppliedAt,
-            SavedAt = s.SavedAt,
-            Job = new JobListResponse
-            {
-                Id = s.Job.Id,
-                Title = s.Job.Title,
-                Location = s.Job.Location,
-                WorkLocationType = s.Job.WorkLocationType,
-                EmploymentType = s.Job.EmploymentType,
-                SalaryMin = s.Job.SalaryMin,
-                SalaryMax = s.Job.SalaryMax,
-                SalaryCurrency = s.Job.SalaryCurrency,
-                PostedAt = s.Job.PostedAt,
-                CompanyName = s.Job.Company.Name,
-                CompanyLogoUrl = s.Job.Company.LogoUrl,
-                IsSaved = true,
-                SavedStatus = s.Status
-            }
-        }).ToList();
+        var responses = savedJobs.Select(s => MapToSavedJobResponse(s, s.Job)).ToList();
 
         return Result.Success(responses);
     }
@@ -391,30 +368,7 @@ public sealed class JobService : IJobService
 
         _logger.LogInformation("User {UserId} saved job {JobId}", userId, jobId);
 
-        return Result.Success(new SavedJobResponse
-        {
-            Id = savedJob.Id,
-            Status = savedJob.Status,
-            Notes = savedJob.Notes,
-            AppliedAt = savedJob.AppliedAt,
-            SavedAt = savedJob.SavedAt,
-            Job = new JobListResponse
-            {
-                Id = job.Id,
-                Title = job.Title,
-                Location = job.Location,
-                WorkLocationType = job.WorkLocationType,
-                EmploymentType = job.EmploymentType,
-                SalaryMin = job.SalaryMin,
-                SalaryMax = job.SalaryMax,
-                SalaryCurrency = job.SalaryCurrency,
-                PostedAt = job.PostedAt,
-                CompanyName = job.Company.Name,
-                CompanyLogoUrl = job.Company.LogoUrl,
-                IsSaved = true,
-                SavedStatus = savedJob.Status
-            }
-        });
+        return Result.Success(MapToSavedJobResponse(savedJob, job));
     }
 
     public async Task<Result<SavedJobResponse>> UpdateSavedJobAsync(
@@ -442,30 +396,7 @@ public sealed class JobService : IJobService
 
         _logger.LogInformation("User {UserId} updated saved job {JobId} to status {Status}", userId, jobId, request.Status);
 
-        return Result.Success(new SavedJobResponse
-        {
-            Id = savedJob.Id,
-            Status = savedJob.Status,
-            Notes = savedJob.Notes,
-            AppliedAt = savedJob.AppliedAt,
-            SavedAt = savedJob.SavedAt,
-            Job = new JobListResponse
-            {
-                Id = savedJob.Job.Id,
-                Title = savedJob.Job.Title,
-                Location = savedJob.Job.Location,
-                WorkLocationType = savedJob.Job.WorkLocationType,
-                EmploymentType = savedJob.Job.EmploymentType,
-                SalaryMin = savedJob.Job.SalaryMin,
-                SalaryMax = savedJob.Job.SalaryMax,
-                SalaryCurrency = savedJob.Job.SalaryCurrency,
-                PostedAt = savedJob.Job.PostedAt,
-                CompanyName = savedJob.Job.Company.Name,
-                CompanyLogoUrl = savedJob.Job.Company.LogoUrl,
-                IsSaved = true,
-                SavedStatus = savedJob.Status
-            }
-        });
+        return Result.Success(MapToSavedJobResponse(savedJob, savedJob.Job));
     }
 
     public async Task<Result> RemoveSavedJobAsync(
@@ -626,6 +557,33 @@ public sealed class JobService : IJobService
 
         return Result.Success(tags);
     }
+
+    private static SavedJobResponse MapToSavedJobResponse(SavedJob savedJob, Job job) => new()
+    {
+        Id = savedJob.Id,
+        Status = savedJob.Status,
+        Notes = savedJob.Notes,
+        AppliedAt = savedJob.AppliedAt,
+        SavedAt = savedJob.SavedAt,
+        Job = MapToJobListResponse(job, isSaved: true, savedStatus: savedJob.Status)
+    };
+
+    private static JobListResponse MapToJobListResponse(Job job, bool isSaved, SavedJobStatus? savedStatus) => new()
+    {
+        Id = job.Id,
+        Title = job.Title,
+        Location = job.Location,
+        WorkLocationType = job.WorkLocationType,
+        EmploymentType = job.EmploymentType,
+        SalaryMin = job.SalaryMin,
+        SalaryMax = job.SalaryMax,
+        SalaryCurrency = job.SalaryCurrency,
+        PostedAt = job.PostedAt,
+        CompanyName = job.Company.Name,
+        CompanyLogoUrl = job.Company.LogoUrl,
+        IsSaved = isSaved,
+        SavedStatus = savedStatus
+    };
 
     private static string ComputeJobHash(string? title, string? description, string? companyName, string? location, decimal? salaryMin, decimal? salaryMax)
     {
