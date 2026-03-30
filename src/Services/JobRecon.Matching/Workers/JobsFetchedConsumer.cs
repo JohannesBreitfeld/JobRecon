@@ -2,8 +2,7 @@ using System.Text;
 using System.Text.Json;
 using JobRecon.Contracts.Events;
 using JobRecon.Infrastructure.Messaging;
-using JobRecon.Matching.Clients;
-using JobRecon.Matching.Contracts;
+using JobRecon.Matching.Services;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -101,60 +100,8 @@ public sealed class JobsFetchedConsumer : BackgroundService
     private async Task TriggerEmbeddingAsync(CancellationToken ct)
     {
         using var scope = _scopeFactory.CreateScope();
-        var jobsClient = scope.ServiceProvider.GetRequiredService<IJobsClient>();
-        var ollamaClient = scope.ServiceProvider.GetRequiredService<IOllamaClient>();
-        var vectorStore = scope.ServiceProvider.GetRequiredService<IVectorStore>();
-
-        await vectorStore.EnsureCollectionAsync(ct);
-
-        var offset = 0;
-        var embedded = 0;
-        const int batchSize = 100;
-        const int maxJobs = 100_000;
-        using var semaphore = new SemaphoreSlim(4);
-
-        while (offset < maxJobs)
-        {
-            var jobsResponse = await jobsClient.GetActiveJobsAsync(batchSize, offset, ct);
-            if (jobsResponse is null || jobsResponse.Jobs.Count == 0)
-                break;
-
-            var jobIds = jobsResponse.Jobs.Select(j => j.Id);
-            var existingIds = await vectorStore.FilterExistingAsync(jobIds, ct);
-            var newJobs = jobsResponse.Jobs.Where(j => !existingIds.Contains(j.Id)).ToList();
-
-            if (newJobs.Count > 0)
-            {
-                var tasks = newJobs.Select(async job =>
-                {
-                    await semaphore.WaitAsync(ct);
-                    try
-                    {
-                        var text = JobEmbeddingWorker.BuildJobText(job);
-                        var embedding = await ollamaClient.GetEmbeddingAsync(text, ct);
-                        if (embedding is null) return false;
-                        await vectorStore.UpsertAsync(job.Id, embedding, ct);
-                        return true;
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                });
-
-                var results = await Task.WhenAll(tasks);
-                embedded += results.Count(r => r);
-            }
-
-            offset += batchSize;
-            if (jobsResponse.Jobs.Count < batchSize)
-                break;
-        }
-
-        if (embedded > 0)
-        {
-            _logger.LogInformation("Event-triggered embedding: embedded {Count} jobs into vector store", embedded);
-        }
+        var embeddingService = scope.ServiceProvider.GetRequiredService<IJobEmbeddingService>();
+        await embeddingService.EmbedPendingJobsAsync(ct);
     }
 
     private async Task InitializeRabbitMqAsync(CancellationToken ct)
