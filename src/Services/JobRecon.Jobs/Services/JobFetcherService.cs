@@ -102,14 +102,40 @@ public sealed class JobFetcherService : IJobFetcherService
 
             await foreach (var batch in fetcher.FetchJobBatchesAsync(source, cancellationToken))
             {
+                // Pre-compute hashes for all jobs in batch
+                var jobHashes = batch.Jobs.ToDictionary(j => j, j => ComputeHash(j));
+
+                // Batch-load existing jobs by ExternalId or Hash (eliminates N+1)
+                var externalIds = batch.Jobs.Select(j => j.ExternalId).ToHashSet();
+                var hashes = jobHashes.Values.ToHashSet();
+                var existingJobs = await _dbContext.Jobs
+                    .Where(j => j.JobSourceId == sourceId &&
+                          (externalIds.Contains(j.ExternalId!) || hashes.Contains(j.Hash!)))
+                    .ToListAsync(cancellationToken);
+
+                var jobsByExternalId = existingJobs
+                    .Where(j => j.ExternalId is not null)
+                    .ToDictionary(j => j.ExternalId!);
+                var jobsByHash = existingJobs
+                    .Where(j => j.Hash is not null)
+                    .ToDictionary(j => j.Hash!);
+
+                // Batch-load existing companies
+                var companyNames = batch.Jobs
+                    .Select(j => j.CompanyName.ToLower().Trim())
+                    .Distinct()
+                    .ToList();
+                var companiesByName = await _dbContext.Companies
+                    .Where(c => companyNames.Contains(c.NormalizedName!))
+                    .ToDictionaryAsync(c => c.NormalizedName!, cancellationToken);
+
                 foreach (var fetchedJob in batch.Jobs)
                 {
-                    var jobHash = ComputeHash(fetchedJob);
-                    var existingJob = await _dbContext.Jobs
-                        .FirstOrDefaultAsync(j =>
-                            j.JobSourceId == sourceId &&
-                            (j.ExternalId == fetchedJob.ExternalId || j.Hash == jobHash),
-                            cancellationToken);
+                    var jobHash = jobHashes[fetchedJob];
+
+                    // In-memory lookup instead of per-job DB query
+                    jobsByExternalId.TryGetValue(fetchedJob.ExternalId, out var existingJob);
+                    existingJob ??= jobsByHash.GetValueOrDefault(jobHash);
 
                     if (existingJob is not null)
                     {
@@ -120,7 +146,7 @@ public sealed class JobFetcherService : IJobFetcherService
                     }
                     else
                     {
-                        var company = await GetOrCreateCompanyAsync(fetchedJob, cancellationToken);
+                        var company = GetOrCreateCompany(fetchedJob, companiesByName);
                         CreateJob(fetchedJob, jobHash, company.Id, sourceId);
                         newJobCount++;
                     }
@@ -243,30 +269,31 @@ public sealed class JobFetcherService : IJobFetcherService
             _dbContext.SaveChangesAsync(ct), cancellationToken);
     }
 
-    private async Task<Company> GetOrCreateCompanyAsync(FetchedJob fetchedJob, CancellationToken cancellationToken)
+    private Company GetOrCreateCompany(FetchedJob fetchedJob, Dictionary<string, Company> companiesByName)
     {
         var normalizedName = fetchedJob.CompanyName.ToLower().Trim();
 
-        var company = await _dbContext.Companies
-            .FirstOrDefaultAsync(c => c.NormalizedName == normalizedName, cancellationToken);
-
-        if (company is null)
+        if (companiesByName.TryGetValue(normalizedName, out var company))
         {
-            company = new Company
+            if (fetchedJob.CompanyLogoUrl is not null && company.LogoUrl is null)
             {
-                Id = Guid.NewGuid(),
-                Name = fetchedJob.CompanyName,
-                NormalizedName = normalizedName,
-                LogoUrl = fetchedJob.CompanyLogoUrl,
-                Website = fetchedJob.CompanyWebsite
-            };
-            _dbContext.Companies.Add(company);
+                company.LogoUrl = fetchedJob.CompanyLogoUrl;
+                company.UpdatedAt = DateTime.UtcNow;
+            }
+
+            return company;
         }
-        else if (fetchedJob.CompanyLogoUrl is not null && company.LogoUrl is null)
+
+        company = new Company
         {
-            company.LogoUrl = fetchedJob.CompanyLogoUrl;
-            company.UpdatedAt = DateTime.UtcNow;
-        }
+            Id = Guid.NewGuid(),
+            Name = fetchedJob.CompanyName,
+            NormalizedName = normalizedName,
+            LogoUrl = fetchedJob.CompanyLogoUrl,
+            Website = fetchedJob.CompanyWebsite
+        };
+        _dbContext.Companies.Add(company);
+        companiesByName[normalizedName] = company;
 
         return company;
     }
