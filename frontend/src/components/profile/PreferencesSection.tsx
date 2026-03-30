@@ -13,7 +13,7 @@ import {
   InputLabel,
   InputAdornment,
 } from '@mui/material';
-import { useProfileStore } from '../../stores/profileStore';
+import { useProfile, useUpdatePreferences } from '../../api/hooks/useProfile';
 import type { EmploymentType, UpdateJobPreferenceRequest } from '../../api/profile';
 
 const employmentTypeLabels: Record<EmploymentType, string> = {
@@ -25,7 +25,10 @@ const employmentTypeLabels: Record<EmploymentType, string> = {
 };
 
 export function PreferencesSection() {
-  const { profile, updatePreferences, isLoading } = useProfileStore();
+  const { data: profile } = useProfile();
+  const updatePreferencesMutation = useUpdatePreferences();
+
+  const isLoading = updatePreferencesMutation.isPending;
 
   const [formData, setFormData] = useState<UpdateJobPreferenceRequest>({
     minSalary: undefined,
@@ -75,7 +78,7 @@ export function PreferencesSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updatePreferences(formData);
+    updatePreferencesMutation.mutate(formData);
   };
 
   return (

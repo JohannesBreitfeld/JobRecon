@@ -21,7 +21,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
-import { useProfileStore } from '../../stores/profileStore';
+import { useProfile, useAddSkill, useRemoveSkill } from '../../api/hooks/useProfile';
 import { jobsApi } from '../../api/jobs';
 import type { SkillLevel, AddSkillRequest } from '../../api/profile';
 
@@ -40,7 +40,10 @@ const skillLevelColors: Record<SkillLevel, 'default' | 'primary' | 'secondary' |
 };
 
 export function SkillsSection() {
-  const { profile, addSkill, removeSkill, isLoading } = useProfileStore();
+  const { data: profile } = useProfile();
+  const addSkillMutation = useAddSkill();
+  const removeSkillMutation = useRemoveSkill();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newSkill, setNewSkill] = useState<AddSkillRequest>({
     name: '',
@@ -50,6 +53,8 @@ export function SkillsSection() {
   const [tagOptions, setTagOptions] = useState<string[]>([]);
   const [tagSearch, setTagSearch] = useState('');
   const [tagsLoading, setTagsLoading] = useState(false);
+
+  const isLoading = addSkillMutation.isPending || removeSkillMutation.isPending;
 
   const fetchTags = useCallback(async (search: string) => {
     setTagsLoading(true);
@@ -85,13 +90,13 @@ export function SkillsSection() {
 
   const handleAddSkill = async () => {
     if (newSkill.name.trim()) {
-      await addSkill(newSkill);
+      await addSkillMutation.mutateAsync(newSkill);
       setDialogOpen(false);
     }
   };
 
-  const handleRemoveSkill = async (skillId: string) => {
-    await removeSkill(skillId);
+  const handleRemoveSkill = (skillId: string) => {
+    removeSkillMutation.mutate(skillId);
   };
 
   return (

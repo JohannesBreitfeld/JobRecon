@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   Container,
   Paper,
@@ -8,30 +7,23 @@ import {
   CircularProgress,
   Button,
 } from '@mui/material';
-import { useState } from 'react';
-import { useProfileStore } from '../../stores/profileStore';
+import { useProfile, useCreateProfile } from '../../api/hooks/useProfile';
+import { ApiError } from '../../api/client';
 import { ProfileForm } from './ProfileForm';
 import { SkillsSection } from './SkillsSection';
 import { PreferencesSection } from './PreferencesSection';
 
 export function ProfilePage() {
-  const { profile, isLoading, error, profileNotFound, fetchProfile, createProfile, clearError } = useProfileStore();
-  const [creating, setCreating] = useState(false);
+  const { data: profile, isLoading, error } = useProfile();
+  const createProfileMutation = useCreateProfile();
 
-  useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+  const profileNotFound = error instanceof ApiError && error.code === 'Profile.NotFound';
 
-  const handleCreateProfile = async () => {
-    setCreating(true);
-    try {
-      await createProfile({});
-    } finally {
-      setCreating(false);
-    }
+  const handleCreateProfile = () => {
+    createProfileMutation.mutate({});
   };
 
-  if (isLoading && !profile) {
+  if (isLoading) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -55,20 +47,20 @@ export function ProfilePage() {
             variant="contained"
             size="large"
             onClick={handleCreateProfile}
-            disabled={creating}
+            disabled={createProfileMutation.isPending}
           >
-            {creating ? 'Skapar profil...' : 'Skapa min profil'}
+            {createProfileMutation.isPending ? 'Skapar profil...' : 'Skapa min profil'}
           </Button>
         </Paper>
       </Container>
     );
   }
 
-  if (error) {
+  if (error && !profileNotFound) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
-        <Alert severity="error" onClose={clearError}>
-          {error}
+        <Alert severity="error">
+          {error instanceof Error ? error.message : 'Kunde inte hämta profil'}
         </Alert>
       </Container>
     );

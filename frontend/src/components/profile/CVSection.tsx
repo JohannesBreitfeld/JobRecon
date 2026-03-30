@@ -23,7 +23,7 @@ import {
   StarBorder as StarBorderIcon,
   Download as DownloadIcon,
 } from '@mui/icons-material';
-import { useProfileStore } from '../../stores/profileStore';
+import { useProfile, useUploadCV, useDeleteCV, useSetPrimaryCV } from '../../api/hooks/useProfile';
 import { profileApi } from '../../api/profile';
 
 const formatFileSize = (bytes: number): string => {
@@ -41,10 +41,15 @@ const formatDate = (dateString: string): string => {
 };
 
 export function CVSection() {
-  const { profile, uploadCV, deleteCV, setPrimaryCV, isLoading } = useProfileStore();
+  const { data: profile } = useProfile();
+  const uploadCVMutation = useUploadCV();
+  const deleteCVMutation = useDeleteCV();
+  const setPrimaryCVMutation = useSetPrimaryCV();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const isLoading = uploadCVMutation.isPending || deleteCVMutation.isPending || setPrimaryCVMutation.isPending;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -68,14 +73,12 @@ export function CVSection() {
     }
 
     setUploadError(null);
-    setUploading(true);
 
     try {
-      await uploadCV(file);
+      await uploadCVMutation.mutateAsync(file);
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : 'Kunde inte ladda upp filen');
     } finally {
-      setUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -84,19 +87,18 @@ export function CVSection() {
 
   const handleDelete = async (documentId: string) => {
     if (window.confirm('Är du säker på att du vill ta bort detta CV?')) {
-      await deleteCV(documentId);
+      deleteCVMutation.mutate(documentId);
     }
   };
 
-  const handleSetPrimary = async (documentId: string) => {
-    await setPrimaryCV(documentId);
+  const handleSetPrimary = (documentId: string) => {
+    setPrimaryCVMutation.mutate(documentId);
   };
 
   const handleDownload = (documentId: string) => {
     const url = profileApi.downloadCV(documentId);
     const token = localStorage.getItem('accessToken');
 
-    // Create a temporary link with auth header
     fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -122,11 +124,11 @@ export function CVSection() {
         <Typography variant="h6">CV-dokument</Typography>
         <Button
           variant="outlined"
-          startIcon={uploading ? <CircularProgress size={20} /> : <UploadIcon />}
+          startIcon={uploadCVMutation.isPending ? <CircularProgress size={20} /> : <UploadIcon />}
           onClick={() => fileInputRef.current?.click()}
-          disabled={isLoading || uploading}
+          disabled={isLoading}
         >
-          {uploading ? 'Laddar upp...' : 'Ladda upp CV'}
+          {uploadCVMutation.isPending ? 'Laddar upp...' : 'Ladda upp CV'}
         </Button>
         <input
           type="file"

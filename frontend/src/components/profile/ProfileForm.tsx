@@ -10,11 +10,12 @@ import {
   InputAdornment,
 } from '@mui/material';
 import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
-import { useProfileStore } from '../../stores/profileStore';
+import { useProfile, useUpdateProfile } from '../../api/hooks/useProfile';
 import type { UpdateProfileRequest } from '../../api/profile';
 
 export function ProfileForm() {
-  const { profile, updateProfile, isLoading } = useProfileStore();
+  const { data: profile } = useProfile();
+  const updateProfileMutation = useUpdateProfile();
 
   const [formData, setFormData] = useState<UpdateProfileRequest>({
     currentJobTitle: '',
@@ -67,8 +68,10 @@ export function ProfileForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateProfile(formData);
+    updateProfileMutation.mutate(formData);
   };
+
+  const isLoading = updateProfileMutation.isPending;
 
   return (
     <Box component="form" onSubmit={handleSubmit}>

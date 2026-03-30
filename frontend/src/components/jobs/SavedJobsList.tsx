@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -19,7 +18,7 @@ import {
   Delete as DeleteIcon,
   OpenInNew as OpenInNewIcon,
 } from '@mui/icons-material';
-import { useJobsStore } from '../../stores/jobsStore';
+import { useSavedJobs, useUpdateSavedJob, useRemoveSavedJob } from '../../api/hooks/useJobs';
 import type { SavedJobStatus } from '../../api/jobs';
 
 const savedStatusLabels: Record<SavedJobStatus, string> = {
@@ -47,18 +46,16 @@ interface SavedJobsListProps {
 }
 
 export function SavedJobsList({ onJobClick }: SavedJobsListProps) {
-  const { savedJobs, loadSavedJobs, updateSavedJob, removeSavedJob, isLoading, error } = useJobsStore();
-
-  useEffect(() => {
-    loadSavedJobs();
-  }, []);
+  const { data: savedJobs = [], isLoading, error } = useSavedJobs();
+  const updateSavedJobMutation = useUpdateSavedJob();
+  const removeSavedJobMutation = useRemoveSavedJob();
 
   const handleStatusChange = (jobId: string, status: SavedJobStatus) => {
-    updateSavedJob(jobId, status);
+    updateSavedJobMutation.mutate({ jobId, status });
   };
 
   const handleRemove = (jobId: string) => {
-    removeSavedJob(jobId);
+    removeSavedJobMutation.mutate(jobId);
   };
 
   const formatDate = (dateStr: string) => {
@@ -68,7 +65,7 @@ export function SavedJobsList({ onJobClick }: SavedJobsListProps) {
   if (error) {
     return (
       <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
+        {error instanceof Error ? error.message : 'Ett fel uppstod'}
       </Alert>
     );
   }

@@ -32,14 +32,13 @@ const employmentTypeLabels: Record<EmploymentType, string> = {
 };
 
 export function JobSearchFilters() {
-  const { searchParams, setSearchParams, searchJobs, isLoading } = useJobsStore();
+  const { searchParams, setSearchParams } = useJobsStore();
   const [showFilters, setShowFilters] = useState(false);
   const [localQuery, setLocalQuery] = useState(searchParams.query || '');
   const [localLocation, setLocalLocation] = useState(searchParams.location || '');
 
   const handleSearch = () => {
     setSearchParams({ query: localQuery, location: localLocation, page: 1 });
-    searchJobs({ ...searchParams, query: localQuery, location: localLocation, page: 1 });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -59,9 +58,6 @@ export function JobSearchFilters() {
       salaryMin: undefined,
       salaryMax: undefined,
       page: 1,
-    });
-    searchJobs({
-      page: 1,
       pageSize: 20,
       sortBy: 'date',
       sortDescending: true,
@@ -78,7 +74,6 @@ export function JobSearchFilters() {
             value={localQuery}
             onChange={(e) => setLocalQuery(e.target.value)}
             onKeyPress={handleKeyPress}
-            disabled={isLoading}
             slotProps={{
               input: {
                 startAdornment: (
@@ -105,7 +100,6 @@ export function JobSearchFilters() {
             value={localLocation}
             onChange={(e) => setLocalLocation(e.target.value)}
             onKeyPress={handleKeyPress}
-            disabled={isLoading}
           />
         </Grid>
 
@@ -114,7 +108,6 @@ export function JobSearchFilters() {
             fullWidth
             variant="contained"
             onClick={handleSearch}
-            disabled={isLoading}
             sx={{ height: 56 }}
           >
             Sök

@@ -1,34 +1,23 @@
-import { useState } from 'react';
 import { Chip, CircularProgress, Tooltip } from '@mui/material';
 import {
   AddCircleOutline as AddCircleOutlineIcon,
   CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
-import { useProfileStore } from '../../stores/profileStore';
+import { useProfile, useAddSkill } from '../../api/hooks/useProfile';
 
 interface SkillChipProps {
   skillName: string;
 }
 
 export function SkillChip({ skillName }: SkillChipProps) {
-  const { profile, addSkill } = useProfileStore();
-  const [adding, setAdding] = useState(false);
-  const [error, setError] = useState(false);
+  const { data: profile } = useProfile();
+  const addSkillMutation = useAddSkill();
 
   const alreadyHave =
     profile?.skills.some((s) => s.name.toLowerCase() === skillName.toLowerCase()) ?? false;
 
-  const handleAdd = async () => {
-    setAdding(true);
-    setError(false);
-    try {
-      await addSkill({ name: skillName, level: 'Intermediate' });
-    } catch {
-      setError(true);
-      setTimeout(() => setError(false), 1500);
-    } finally {
-      setAdding(false);
-    }
+  const handleAdd = () => {
+    addSkillMutation.mutate({ name: skillName, level: 'Intermediate' });
   };
 
   if (alreadyHave) {
@@ -42,6 +31,9 @@ export function SkillChip({ skillName }: SkillChipProps) {
       />
     );
   }
+
+  const adding = addSkillMutation.isPending;
+  const error = addSkillMutation.isError;
 
   return (
     <Tooltip title={`Lägg till ${skillName} bland dina kompetenser`} disableHoverListener={adding}>

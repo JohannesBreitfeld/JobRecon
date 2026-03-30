@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Container,
   Typography,
@@ -14,22 +14,18 @@ import {
   TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import { useMatchingStore } from '../../stores/matchingStore';
+import { useRecommendations } from '../../api/hooks/useMatching';
 import { MatchCard } from './MatchCard';
 import { JobDetailsDialog } from '../jobs/JobDetailsDialog';
 
 export function RecommendationsPage() {
-  const { results, isLoading, error, params, setParams, loadRecommendations, clearError } =
-    useMatchingStore();
+  const { params, setParams } = useMatchingStore();
+  const { data: results, isLoading, error } = useRecommendations(params);
   const [minScoreFilter, setMinScoreFilter] = useState(params.minScore ?? 0.3);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadRecommendations();
-  }, [loadRecommendations]);
-
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setParams({ page });
-    loadRecommendations({ ...params, page });
   };
 
   const handleMinScoreChange = (_: Event, value: number | number[]) => {
@@ -40,7 +36,6 @@ export function RecommendationsPage() {
   const handleMinScoreCommit = (_: Event | React.SyntheticEvent, value: number | number[]) => {
     const score = value as number;
     setParams({ minScore: score, page: 1 });
-    loadRecommendations({ ...params, minScore: score, page: 1 });
   };
 
   const totalPages = results ? Math.ceil(results.totalCount / results.pageSize) : 0;
@@ -55,8 +50,8 @@ export function RecommendationsPage() {
       </Box>
 
       {error && (
-        <Alert severity="error" onClose={clearError} sx={{ mb: 2 }}>
-          {error}
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error instanceof Error ? error.message : 'Ett fel uppstod vid hämtning av rekommendationer'}
         </Alert>
       )}
 

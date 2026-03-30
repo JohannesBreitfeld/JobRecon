@@ -15,7 +15,7 @@ import {
   AccessTime as TimeIcon,
   Work as WorkIcon,
 } from '@mui/icons-material';
-import { useJobsStore } from '../../stores/jobsStore';
+import { useSaveJob, useRemoveSavedJob } from '../../api/hooks/useJobs';
 import type { JobListResponse, WorkLocationType, EmploymentType, SavedJobStatus } from '../../api/jobs';
 
 const workLocationLabels: Record<WorkLocationType, string> = {
@@ -59,14 +59,16 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, onClick }: JobCardProps) {
-  const { saveJob, removeSavedJob, isLoading } = useJobsStore();
+  const saveJobMutation = useSaveJob();
+  const removeSavedJobMutation = useRemoveSavedJob();
+  const isLoading = saveJobMutation.isPending || removeSavedJobMutation.isPending;
 
   const handleSaveClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (job.isSaved) {
-      removeSavedJob(job.id);
+      removeSavedJobMutation.mutate(job.id);
     } else {
-      saveJob(job.id);
+      saveJobMutation.mutate({ jobId: job.id });
     }
   };
 

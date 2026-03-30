@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -27,8 +26,8 @@ import {
   Schedule as ScheduleIcon,
   Business as BusinessIcon,
 } from '@mui/icons-material';
-import { useJobsStore } from '../../stores/jobsStore';
-import { useProfileStore } from '../../stores/profileStore';
+import { useJob, useSaveJob, useRemoveSavedJob, useUpdateSavedJob } from '../../api/hooks/useJobs';
+import { useProfile } from '../../api/hooks/useProfile';
 import { SkillChip } from './SkillChip';
 import type { WorkLocationType, EmploymentType, SavedJobStatus } from '../../api/jobs';
 
@@ -64,31 +63,27 @@ interface JobDetailsDialogProps {
 }
 
 export function JobDetailsDialog({ jobId, open, onClose }: JobDetailsDialogProps) {
-  const { selectedJob, loadJob, saveJob, removeSavedJob, updateSavedJob, clearSelectedJob, isLoading } = useJobsStore();
-  const { profile, fetchProfile } = useProfileStore();
+  const { data: selectedJob, isLoading } = useJob(open ? jobId : null);
+  useProfile();
 
-  useEffect(() => {
-    if (jobId && open) {
-      loadJob(jobId);
-      if (!profile) fetchProfile();
-    }
-    return () => {
-      clearSelectedJob();
-    };
-  }, [jobId, open]);
+  const saveJobMutation = useSaveJob();
+  const removeSavedJobMutation = useRemoveSavedJob();
+  const updateSavedJobMutation = useUpdateSavedJob();
+
+  const isMutating = saveJobMutation.isPending || removeSavedJobMutation.isPending || updateSavedJobMutation.isPending;
 
   const handleSaveClick = () => {
     if (!selectedJob) return;
     if (selectedJob.isSaved) {
-      removeSavedJob(selectedJob.id);
+      removeSavedJobMutation.mutate(selectedJob.id);
     } else {
-      saveJob(selectedJob.id);
+      saveJobMutation.mutate({ jobId: selectedJob.id });
     }
   };
 
   const handleStatusChange = (status: SavedJobStatus) => {
     if (!selectedJob) return;
-    updateSavedJob(selectedJob.id, status);
+    updateSavedJobMutation.mutate({ jobId: selectedJob.id, status });
   };
 
   const formatSalary = () => {
@@ -321,7 +316,7 @@ export function JobDetailsDialog({ jobId, open, onClose }: JobDetailsDialogProps
               variant={selectedJob.isSaved ? 'outlined' : 'contained'}
               startIcon={selectedJob.isSaved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
               onClick={handleSaveClick}
-              disabled={isLoading}
+              disabled={isMutating}
             >
               {selectedJob.isSaved ? 'Sparad' : 'Spara jobb'}
             </Button>

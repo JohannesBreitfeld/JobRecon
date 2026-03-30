@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   Box,
   Grid,
@@ -12,6 +11,7 @@ import {
   InputLabel,
 } from '@mui/material';
 import { useJobsStore } from '../../stores/jobsStore';
+import { useJobSearch } from '../../api/hooks/useJobs';
 import { JobCard } from './JobCard';
 
 interface JobListProps {
@@ -19,26 +19,21 @@ interface JobListProps {
 }
 
 export function JobList({ onJobClick }: JobListProps) {
-  const { searchResults, searchParams, setSearchParams, searchJobs, isLoading, error } = useJobsStore();
-
-  useEffect(() => {
-    searchJobs();
-  }, []);
+  const { searchParams, setSearchParams } = useJobsStore();
+  const { data: searchResults, isLoading, error } = useJobSearch(searchParams);
 
   const handlePageChange = (_: unknown, page: number) => {
     setSearchParams({ page });
-    searchJobs({ ...searchParams, page });
   };
 
   const handleSortChange = (sortBy: string) => {
     setSearchParams({ sortBy, page: 1 });
-    searchJobs({ ...searchParams, sortBy, page: 1 });
   };
 
   if (error) {
     return (
       <Alert severity="error" sx={{ mb: 2 }}>
-        {error}
+        {error instanceof Error ? error.message : 'Ett fel uppstod vid sökning'}
       </Alert>
     );
   }
