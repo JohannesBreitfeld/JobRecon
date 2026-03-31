@@ -21,7 +21,7 @@ import { JobDetailsDialog } from '../jobs/JobDetailsDialog';
 export function RecommendationsPage() {
   const { params, setParams } = useMatchingStore();
   const { data: results, isLoading, error } = useRecommendations(params);
-  const [minScoreFilter, setMinScoreFilter] = useState(params.minScore ?? 0.3);
+  const [minScoreFilter, setMinScoreFilter] = useState(params.minScore ?? 0.6);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {

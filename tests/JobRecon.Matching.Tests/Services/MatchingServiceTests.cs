@@ -165,8 +165,7 @@ public class MatchingServiceTests
         var result = await _sut.GetRecommendationsAsync(userId, new GetRecommendationsRequest());
 
         // Assert
-        result.Recommendations.Should().HaveCount(1);
-        result.Recommendations[0].MatchScore.Should().Be(0);
+        result!.Recommendations.Should().HaveCount(0);
     }
 
     [Fact]

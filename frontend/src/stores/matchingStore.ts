@@ -10,7 +10,7 @@ export const useMatchingStore = create<MatchingState>((set) => ({
   params: {
     page: 1,
     pageSize: 20,
-    minScore: 0.3,
+    minScore: 0.6,
   },
 
   setParams: (params) => {

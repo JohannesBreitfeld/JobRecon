@@ -152,13 +152,14 @@ public sealed class MatchingService : IMatchingService
                 continue;
 
             totalAnalyzed++;
+
+            if (IsExcluded(profile, job))
+                continue;
+
             var heuristicScore = CalculateHeuristicScore(profile, job, out var factors);
 
             // Blend vector and heuristic scores
             var blendedScore = (vectorScore * VectorWeight) + (heuristicScore * HeuristicWeight);
-
-            if (IsExcluded(profile, job))
-                blendedScore = 0;
 
             factors.Add(new MatchFactor("Semantic Similarity", $"Vector score: {vectorScore:P0}", vectorScore, VectorWeight));
 
@@ -176,12 +177,16 @@ public sealed class MatchingService : IMatchingService
         double minScore,
         CancellationToken ct)
     {
+        const int batchSize = 100;
+        const int maxJobsToScan = 5000;
+
+        _logger.LogWarning("Using heuristic-only matching (vector search unavailable). Performance will be degraded");
+
         var recommendations = new List<JobRecommendation>();
         var offset = 0;
-        const int batchSize = 100;
         var totalAnalyzed = 0;
 
-        while (true)
+        while (offset < maxJobsToScan)
         {
             var jobsResponse = await _jobsClient.GetActiveJobsAsync(batchSize, offset, ct);
             if (jobsResponse is null || jobsResponse.Jobs.Count == 0)
@@ -190,10 +195,11 @@ public sealed class MatchingService : IMatchingService
             foreach (var job in jobsResponse.Jobs)
             {
                 totalAnalyzed++;
-                var score = CalculateHeuristicScore(profile, job, out var factors);
 
                 if (IsExcluded(profile, job))
-                    score = 0;
+                    continue;
+
+                var score = CalculateHeuristicScore(profile, job, out var factors);
 
                 if (score >= minScore)
                 {
@@ -202,8 +208,6 @@ public sealed class MatchingService : IMatchingService
             }
 
             offset += batchSize;
-            if (offset >= 5000)
-                break;
         }
 
         return (recommendations, totalAnalyzed);
