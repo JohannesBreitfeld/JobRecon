@@ -427,24 +427,29 @@ public sealed class JobService : IJobService
         var today = DateTime.UtcNow.Date;
         var weekAgo = today.AddDays(-7);
 
-        var totalJobs = await _dbContext.Jobs.CountAsync(cancellationToken);
-        var activeJobs = await _dbContext.Jobs.CountAsync(j => j.Status == JobStatus.Active, cancellationToken);
-        var newJobsToday = await _dbContext.Jobs.CountAsync(j => j.CreatedAt >= today, cancellationToken);
-        var newJobsThisWeek = await _dbContext.Jobs.CountAsync(j => j.CreatedAt >= weekAgo, cancellationToken);
+        // Single query for all 4 counts using conditional aggregation
+        var counts = await _dbContext.Jobs
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Active = g.Count(j => j.Status == JobStatus.Active),
+                Today = g.Count(j => j.CreatedAt >= today),
+                ThisWeek = g.Count(j => j.CreatedAt >= weekAgo)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        var savedJobsCount = 0;
-        if (userId.HasValue)
-        {
-            savedJobsCount = await _dbContext.SavedJobs.CountAsync(s => s.UserId == userId.Value, cancellationToken);
-        }
+        var savedJobsCount = userId.HasValue
+            ? await _dbContext.SavedJobs.CountAsync(s => s.UserId == userId.Value, cancellationToken)
+            : 0;
 
-        var jobsBySource = await _dbContext.Jobs
+        var jobsBySourceTask = _dbContext.Jobs
             .Include(j => j.JobSource)
             .GroupBy(j => j.JobSource.Name)
             .Select(g => new { Source = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.Source, x => x.Count, cancellationToken);
 
-        var jobsByLocation = await _dbContext.Jobs
+        var jobsByLocationTask = _dbContext.Jobs
             .Where(j => j.Location != null)
             .GroupBy(j => j.Location!)
             .Select(g => new { Location = g.Key, Count = g.Count() })
@@ -452,22 +457,24 @@ public sealed class JobService : IJobService
             .Take(10)
             .ToDictionaryAsync(x => x.Location, x => x.Count, cancellationToken);
 
-        var jobsByType = await _dbContext.Jobs
+        var jobsByTypeTask = _dbContext.Jobs
             .Where(j => j.EmploymentType != null)
             .GroupBy(j => j.EmploymentType!.Value)
             .Select(g => new { Type = g.Key.ToString(), Count = g.Count() })
             .ToDictionaryAsync(x => x.Type, x => x.Count, cancellationToken);
 
+        await Task.WhenAll(jobsBySourceTask, jobsByLocationTask, jobsByTypeTask);
+
         return Result.Success(new JobStatisticsResponse
         {
-            TotalJobs = totalJobs,
-            ActiveJobs = activeJobs,
-            NewJobsToday = newJobsToday,
-            NewJobsThisWeek = newJobsThisWeek,
+            TotalJobs = counts?.Total ?? 0,
+            ActiveJobs = counts?.Active ?? 0,
+            NewJobsToday = counts?.Today ?? 0,
+            NewJobsThisWeek = counts?.ThisWeek ?? 0,
             SavedJobsCount = savedJobsCount,
-            JobsBySource = jobsBySource,
-            JobsByLocation = jobsByLocation,
-            JobsByType = jobsByType
+            JobsBySource = await jobsBySourceTask,
+            JobsByLocation = await jobsByLocationTask,
+            JobsByType = await jobsByTypeTask
         });
     }
 
