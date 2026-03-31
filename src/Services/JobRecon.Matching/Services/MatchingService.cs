@@ -339,11 +339,30 @@ public sealed class MatchingService : IMatchingService
             return 0.3;
         }
 
-        var matchedSkills = allJobSkills
-            .Where(js => userSkills.Any(us =>
-                us.Contains(js) || js.Contains(us) ||
-                LevenshteinSimilarity(us, js) > 0.8))
-            .ToList();
+        // Fast path: exact or substring match (covers most cases)
+        var matchedSkills = new List<string>();
+        var unmatchedJobSkills = new List<string>();
+
+        foreach (var js in allJobSkills)
+        {
+            if (userSkills.Contains(js) || userSkills.Any(us => us.Contains(js) || js.Contains(us)))
+            {
+                matchedSkills.Add(js);
+            }
+            else
+            {
+                unmatchedJobSkills.Add(js);
+            }
+        }
+
+        // Slow path: Levenshtein only for remaining unmatched skills
+        foreach (var js in unmatchedJobSkills)
+        {
+            if (userSkills.Any(us => LevenshteinSimilarity(us, js) > 0.8))
+            {
+                matchedSkills.Add(js);
+            }
+        }
 
         var matchRatio = (double)matchedSkills.Count / allJobSkills.Count;
 
