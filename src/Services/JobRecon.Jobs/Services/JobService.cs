@@ -509,27 +509,28 @@ public sealed class JobService : IJobService
         CancellationToken cancellationToken = default)
     {
         var company = await _dbContext.Companies
-            .Include(c => c.Jobs)
             .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Id == companyId, cancellationToken);
+            .Where(c => c.Id == companyId)
+            .Select(c => new CompanyResponse
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Description = c.Description,
+                LogoUrl = c.LogoUrl,
+                Website = c.Website,
+                Industry = c.Industry,
+                Location = c.Location,
+                EmployeeCount = c.EmployeeCount,
+                JobCount = c.Jobs.Count(j => j.Status == JobStatus.Active)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (company is null)
         {
             return Result.Failure<CompanyResponse>(Error.NotFound("Company.NotFound", "Company not found"));
         }
 
-        return Result.Success(new CompanyResponse
-        {
-            Id = company.Id,
-            Name = company.Name,
-            Description = company.Description,
-            LogoUrl = company.LogoUrl,
-            Website = company.Website,
-            Industry = company.Industry,
-            Location = company.Location,
-            EmployeeCount = company.EmployeeCount,
-            JobCount = company.Jobs.Count(j => j.Status == JobStatus.Active)
-        });
+        return Result.Success(company);
     }
 
     public async Task<Result<List<string>>> GetTagsAsync(
