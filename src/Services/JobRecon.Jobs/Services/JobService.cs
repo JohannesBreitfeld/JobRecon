@@ -101,24 +101,15 @@ public sealed class JobService : IJobService
             query = query.Where(j => j.Tags.Any(t => normalizedTags.Contains(t.NormalizedName!)));
         }
 
-        HashSet<Guid>? savedJobIds = null;
-        Dictionary<Guid, SavedJobStatus>? savedJobStatuses = null;
-
-        if (userId.HasValue)
+        if (userId.HasValue && request.SavedOnly == true)
         {
-            var savedJobs = await _dbContext.SavedJobs
+            var savedJobIds = await _dbContext.SavedJobs
                 .AsNoTracking()
                 .Where(s => s.UserId == userId.Value)
-                .Select(s => new { s.JobId, s.Status })
+                .Select(s => s.JobId)
                 .ToListAsync(cancellationToken);
 
-            savedJobIds = savedJobs.Select(s => s.JobId).ToHashSet();
-            savedJobStatuses = savedJobs.ToDictionary(s => s.JobId, s => s.Status);
-
-            if (request.SavedOnly == true)
-            {
-                query = query.Where(j => savedJobIds.Contains(j.Id));
-            }
+            query = query.Where(j => savedJobIds.Contains(j.Id));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -164,14 +155,22 @@ public sealed class JobService : IJobService
             })
             .ToListAsync(cancellationToken);
 
-        if (savedJobIds is not null)
+        if (userId.HasValue && jobs.Count > 0)
         {
+            var pageJobIds = jobs.Select(j => j.Id).ToList();
+            var savedForPage = await _dbContext.SavedJobs
+                .AsNoTracking()
+                .Where(s => s.UserId == userId.Value && pageJobIds.Contains(s.JobId))
+                .Select(s => new { s.JobId, s.Status })
+                .ToDictionaryAsync(s => s.JobId, s => s.Status, cancellationToken);
+
             foreach (var job in jobs)
             {
-                job.IsSaved = savedJobIds.Contains(job.Id);
-                job.SavedStatus = job.IsSaved && savedJobStatuses!.TryGetValue(job.Id, out var status)
-                    ? status
-                    : null;
+                if (savedForPage.TryGetValue(job.Id, out var status))
+                {
+                    job.IsSaved = true;
+                    job.SavedStatus = status;
+                }
             }
         }
 
