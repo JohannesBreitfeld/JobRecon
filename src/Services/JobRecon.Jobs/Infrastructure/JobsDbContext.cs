@@ -62,6 +62,8 @@ public sealed class JobsDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.NormalizedTitle);
+            entity.HasIndex(e => e.NormalizedDescription);
+            entity.HasIndex(e => e.NormalizedLocation);
             entity.HasIndex(e => e.ExternalId);
             entity.HasIndex(e => e.Hash);
             entity.HasIndex(e => e.Status);
@@ -76,7 +78,9 @@ public sealed class JobsDbContext : DbContext
 
             entity.Property(e => e.Title).HasMaxLength(500).IsRequired();
             entity.Property(e => e.NormalizedTitle).HasMaxLength(500);
+            entity.Property(e => e.NormalizedDescription).HasMaxLength(50000);
             entity.Property(e => e.Description).HasMaxLength(50000);
+            entity.Property(e => e.NormalizedLocation).HasMaxLength(500);
             entity.Property(e => e.Location).HasMaxLength(500);
             entity.Property(e => e.WorkLocationType).HasConversion<string>().HasMaxLength(50);
             entity.Property(e => e.EmploymentType).HasConversion<string>().HasMaxLength(50);

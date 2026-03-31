@@ -44,14 +44,14 @@ public sealed class JobService : IJobService
             var searchTerm = request.Query.ToLower();
             query = query.Where(j =>
                 j.NormalizedTitle!.Contains(searchTerm) ||
-                j.Description!.ToLower().Contains(searchTerm) ||
+                j.NormalizedDescription!.Contains(searchTerm) ||
                 j.Company.NormalizedName!.Contains(searchTerm));
         }
 
         if (!string.IsNullOrWhiteSpace(request.Location))
         {
             var location = request.Location.ToLower();
-            query = query.Where(j => j.Location != null && j.Location.ToLower().Contains(location));
+            query = query.Where(j => j.NormalizedLocation != null && j.NormalizedLocation.Contains(location));
         }
 
         if (request.WorkLocationType.HasValue)
@@ -265,7 +265,9 @@ public sealed class JobService : IJobService
             Title = request.Title,
             NormalizedTitle = request.Title.ToLower(),
             Description = request.Description,
+            NormalizedDescription = request.Description?.ToLower(),
             Location = request.Location,
+            NormalizedLocation = request.Location?.ToLower(),
             WorkLocationType = request.WorkLocationType,
             EmploymentType = request.EmploymentType,
             SalaryMin = request.SalaryMin,

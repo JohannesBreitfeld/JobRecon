@@ -62,7 +62,9 @@ public class JobServiceTests : IDisposable
             Title = title,
             NormalizedTitle = title.ToLower(),
             Description = "Test job description",
+            NormalizedDescription = "test job description",
             Location = "Stockholm",
+            NormalizedLocation = "stockholm",
             WorkLocationType = WorkLocationType.Remote,
             EmploymentType = EmploymentType.FullTime,
             SalaryMin = 50000,
@@ -128,8 +130,10 @@ public class JobServiceTests : IDisposable
         var (company, source) = await CreateTestDataAsync();
         var job1 = await CreateTestJobAsync(company, source, "Job 1");
         job1.Location = "Stockholm";
+        job1.NormalizedLocation = "stockholm";
         var job2 = await CreateTestJobAsync(company, source, "Job 2");
         job2.Location = "Göteborg";
+        job2.NormalizedLocation = "göteborg";
         await _dbContext.SaveChangesAsync();
 
         var request = new JobSearchRequest { Location = "Stockholm", Page = 1, PageSize = 20 };

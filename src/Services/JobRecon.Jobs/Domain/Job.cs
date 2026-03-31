@@ -7,7 +7,9 @@ public sealed class Job : AggregateRoot<Guid>
     public required string Title { get; set; }
     public string? NormalizedTitle { get; set; }
     public string? Description { get; set; }
+    public string? NormalizedDescription { get; set; }
     public string? Location { get; set; }
+    public string? NormalizedLocation { get; set; }
     public WorkLocationType? WorkLocationType { get; set; }
     public EmploymentType? EmploymentType { get; set; }
     public decimal? SalaryMin { get; set; }

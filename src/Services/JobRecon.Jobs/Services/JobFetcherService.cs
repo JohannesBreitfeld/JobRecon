@@ -227,7 +227,9 @@ public sealed class JobFetcherService : IJobFetcherService
             Title = fetchedJob.Title,
             NormalizedTitle = fetchedJob.Title.ToLower(),
             Description = fetchedJob.Description,
+            NormalizedDescription = fetchedJob.Description?.ToLower(),
             Location = fetchedJob.Location,
+            NormalizedLocation = fetchedJob.Location?.ToLower(),
             WorkLocationType = fetchedJob.WorkLocationType,
             EmploymentType = fetchedJob.EmploymentType,
             SalaryMin = fetchedJob.SalaryMin,
@@ -303,7 +305,9 @@ public sealed class JobFetcherService : IJobFetcherService
         job.Title = fetchedJob.Title;
         job.NormalizedTitle = fetchedJob.Title.ToLower();
         job.Description = fetchedJob.Description;
+        job.NormalizedDescription = fetchedJob.Description?.ToLower();
         job.Location = fetchedJob.Location;
+        job.NormalizedLocation = fetchedJob.Location?.ToLower();
         job.WorkLocationType = fetchedJob.WorkLocationType;
         job.EmploymentType = fetchedJob.EmploymentType;
         job.SalaryMin = fetchedJob.SalaryMin;
