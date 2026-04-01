@@ -172,7 +172,7 @@ services:
       MinIO__Endpoint: "minio:9000"
       MinIO__AccessKey: "jobrecon"
       MinIO__SecretKey: "${MINIO_PASSWORD:-devpassword123}"
-      GrpcApiKey: "${GRPC_API_KEY:-}"
+      GrpcApiKey: "${GRPC_API_KEY:-dev-grpc-api-key}"
       Kestrel__Endpoints__Http__Url: "http://0.0.0.0:5002"
       Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
       Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5012"
@@ -200,7 +200,7 @@ services:
       Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
       Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5013"
       Kestrel__Endpoints__Grpc__Protocols: "Http2"
-      GrpcApiKey: "${GRPC_API_KEY:-}"
+      GrpcApiKey: "${GRPC_API_KEY:-dev-grpc-api-key}"
     ports:
       - "5003:5003"
     depends_on:
@@ -225,7 +225,7 @@ services:
       Ollama__BaseUrl: "http://ollama:11434"
       Qdrant__Host: qdrant
       Qdrant__GrpcPort: "6334"
-      GrpcApiKey: "${GRPC_API_KEY:-}"
+      GrpcApiKey: "${GRPC_API_KEY:-dev-grpc-api-key}"
     ports:
       - "5005:8080"
     depends_on:
