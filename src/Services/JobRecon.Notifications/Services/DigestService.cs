@@ -8,26 +8,22 @@ namespace JobRecon.Notifications.Services;
 
 public sealed class DigestService : IDigestService
 {
+    private const int MaxParallelDigests = 5;
+
     private readonly NotificationsDbContext _dbContext;
     private readonly IPreferenceService _preferenceService;
-    private readonly IEmailService _emailService;
-    private readonly INotificationService _notificationService;
-    private readonly IProfileClient _profileClient;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<DigestService> _logger;
 
     public DigestService(
         NotificationsDbContext dbContext,
         IPreferenceService preferenceService,
-        IEmailService emailService,
-        INotificationService notificationService,
-        IProfileClient profileClient,
+        IServiceScopeFactory scopeFactory,
         ILogger<DigestService> logger)
     {
         _dbContext = dbContext;
         _preferenceService = preferenceService;
-        _emailService = emailService;
-        _notificationService = notificationService;
-        _profileClient = profileClient;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -80,26 +76,35 @@ public sealed class DigestService : IDigestService
             "Processing {Frequency} digests for {Count} users",
             frequency, usersReadyForDigest.Count);
 
-        foreach (var preference in usersReadyForDigest)
-        {
-            try
+        await Parallel.ForEachAsync(
+            usersReadyForDigest,
+            new ParallelOptions { MaxDegreeOfParallelism = MaxParallelDigests, CancellationToken = ct },
+            async (preference, token) =>
             {
-                await ProcessUserDigestAsync(preference, ct);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to process digest for user {UserId}",
-                    preference.UserId);
-            }
-        }
+                try
+                {
+                    await ProcessUserDigestAsync(preference, token);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to process digest for user {UserId}",
+                        preference.UserId);
+                }
+            });
     }
 
     private async Task ProcessUserDigestAsync(
         NotificationPreference preference,
         CancellationToken ct)
     {
-        var pendingItems = await _dbContext.DigestQueue
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
+        var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+        var notificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+        var profileClient = scope.ServiceProvider.GetRequiredService<IProfileClient>();
+
+        var pendingItems = await dbContext.DigestQueue
             .Where(d => d.UserId == preference.UserId && !d.IsProcessed)
             .OrderByDescending(d => d.MatchScore)
             .Take(50)
@@ -115,7 +120,7 @@ public sealed class DigestService : IDigestService
 
         if (string.IsNullOrEmpty(email))
         {
-            var userEmail = await _profileClient.GetUserEmailAsync(userId, ct);
+            var userEmail = await profileClient.GetUserEmailAsync(userId, ct);
             email = userEmail?.Email;
         }
 
@@ -141,7 +146,7 @@ public sealed class DigestService : IDigestService
         var digest = new DigestEmailDto(digestItems, pendingItems.Count, periodStart, periodEnd);
 
         // Send email
-        var emailSent = await _emailService.SendDigestEmailAsync(email, null, digest, preference.UnsubscribeToken, ct);
+        var emailSent = await emailService.SendDigestEmailAsync(email, null, digest, preference.UnsubscribeToken, ct);
 
         if (emailSent)
         {
@@ -150,12 +155,12 @@ public sealed class DigestService : IDigestService
             {
                 item.MarkAsProcessed();
             }
-            await _dbContext.SaveChangesAsync(ct);
+            await dbContext.SaveChangesAsync(ct);
 
             // Create in-app notification for digest
             if (preference.InAppEnabled)
             {
-                await _notificationService.CreateNotificationAsync(
+                await notificationService.CreateNotificationAsync(
                     userId,
                     NotificationType.DigestSummary,
                     NotificationChannel.InApp,
