@@ -30,8 +30,9 @@ app.ConfigurePipeline();
 app.MapNotificationEndpoints();
 app.MapPreferenceEndpoints();
 
-// Run migrations and configure jobs
+// Run migrations, purge stale jobs, and configure recurring jobs
 await app.MigrateDatabaseAsync();
+app.PurgeStaleHangfireJobs();
 app.ConfigureRecurringJobs();
 
 app.Run();

@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.Dashboard;
+using Hangfire.Storage;
 using JobRecon.Notifications.Infrastructure;
 using JobRecon.Notifications.Services;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -40,6 +41,51 @@ public static class WebApplicationExtensions
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
         await dbContext.Database.MigrateAsync();
+    }
+
+    public static void PurgeStaleHangfireJobs(this WebApplication app)
+    {
+        var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+        var logger = loggerFactory.CreateLogger("Hangfire.StartupPurge");
+
+        try
+        {
+            using var connection = JobStorage.Current.GetConnection();
+            var monitor = JobStorage.Current.GetMonitoringApi();
+            var purged = 0;
+
+            logger.LogInformation("Checking for stale Hangfire jobs that cannot be deserialized");
+
+            var failedJobs = monitor.FailedJobs(0, 1000);
+            foreach (var job in failedJobs)
+            {
+                var jobData = connection.GetJobData(job.Key);
+                if (jobData?.Job is null)
+                {
+                    logger.LogWarning("Deleting stale failed Hangfire job {JobId}", job.Key);
+                    BackgroundJob.Delete(job.Key);
+                    purged++;
+                }
+            }
+
+            var scheduledJobs = monitor.ScheduledJobs(0, 1000);
+            foreach (var job in scheduledJobs)
+            {
+                var jobData = connection.GetJobData(job.Key);
+                if (jobData?.Job is null)
+                {
+                    logger.LogWarning("Deleting stale scheduled Hangfire job {JobId}", job.Key);
+                    BackgroundJob.Delete(job.Key);
+                    purged++;
+                }
+            }
+
+            logger.LogInformation("Hangfire startup purge complete: {PurgedCount} stale job(s) deleted", purged);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to purge stale Hangfire jobs on startup");
+        }
     }
 
     public static void ConfigureRecurringJobs(this WebApplication app)
