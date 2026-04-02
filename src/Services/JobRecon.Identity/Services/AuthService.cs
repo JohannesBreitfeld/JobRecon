@@ -1,3 +1,4 @@
+using System.Text.Json;
 using JobRecon.Domain.Common;
 using JobRecon.Domain.Identity.Events;
 using JobRecon.Identity.Contracts;
@@ -5,6 +6,7 @@ using JobRecon.Identity.Domain;
 using JobRecon.Identity.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace JobRecon.Identity.Services;
 
@@ -13,17 +15,22 @@ public sealed class AuthService : IAuthService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IdentityDbContext _dbContext;
     private readonly ITokenService _tokenService;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<AuthService> _logger;
+
+    private static readonly TimeSpan RolesCacheTtl = TimeSpan.FromHours(1);
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         IdentityDbContext dbContext,
         ITokenService tokenService,
+        IDistributedCache cache,
         ILogger<AuthService> logger)
     {
         _userManager = userManager;
         _dbContext = dbContext;
         _tokenService = tokenService;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -158,7 +165,7 @@ public sealed class AuthService : IAuthService
         _dbContext.RefreshTokens.Add(newToken);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var roles = await _userManager.GetRolesAsync(user);
+        var roles = await GetCachedRolesAsync(user);
         var accessToken = _tokenService.GenerateAccessToken(user, roles);
 
         return Result.Success(new AuthResponse
@@ -202,7 +209,7 @@ public sealed class AuthService : IAuthService
         string? deviceInfo,
         CancellationToken cancellationToken)
     {
-        var roles = await _userManager.GetRolesAsync(user);
+        var roles = await GetCachedRolesAsync(user);
         var accessToken = _tokenService.GenerateAccessToken(user, roles);
         var refreshToken = _tokenService.GenerateRefreshToken();
         var tokenHash = _tokenService.HashToken(refreshToken);
@@ -334,6 +341,43 @@ public sealed class AuthService : IAuthService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<IList<string>> GetCachedRolesAsync(ApplicationUser user)
+    {
+        var key = $"user:roles:{user.Id}";
+
+        try
+        {
+            var cached = await _cache.GetAsync(key);
+            if (cached is not null)
+            {
+                var roles = JsonSerializer.Deserialize<List<string>>(cached);
+                if (roles is not null)
+                    return roles;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Redis read failed for roles key {Key}", key);
+        }
+
+        var freshRoles = await _userManager.GetRolesAsync(user);
+
+        try
+        {
+            var bytes = JsonSerializer.SerializeToUtf8Bytes(freshRoles);
+            await _cache.SetAsync(key, bytes, new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = RolesCacheTtl
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Redis write failed for roles key {Key}", key);
+        }
+
+        return freshRoles;
     }
 
     private static UserInfo MapToUserInfo(ApplicationUser user, IList<string> roles)

@@ -5,6 +5,7 @@ using JobRecon.Identity.Infrastructure;
 using JobRecon.Identity.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
@@ -16,6 +17,7 @@ public class AuthServiceTests : IDisposable
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IdentityDbContext _dbContext;
     private readonly ITokenService _tokenService;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<AuthService> _logger;
     private readonly AuthService _sut;
 
@@ -30,6 +32,7 @@ public class AuthServiceTests : IDisposable
         // Setup mocks
         _userManager = CreateMockUserManager();
         _tokenService = Substitute.For<ITokenService>();
+        _cache = Substitute.For<IDistributedCache>();
         _logger = Substitute.For<ILogger<AuthService>>();
 
         // Setup default token service behavior
@@ -40,7 +43,7 @@ public class AuthServiceTests : IDisposable
         _tokenService.GetAccessTokenExpiration().Returns(DateTime.UtcNow.AddMinutes(15));
         _tokenService.GetRefreshTokenExpiration().Returns(DateTime.UtcNow.AddDays(7));
 
-        _sut = new AuthService(_userManager, _dbContext, _tokenService, _logger);
+        _sut = new AuthService(_userManager, _dbContext, _tokenService, _cache, _logger);
     }
 
     #region RegisterAsync Tests

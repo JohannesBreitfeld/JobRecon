@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.PostgreSql;
+using JobRecon.Infrastructure.Caching;
 using JobRecon.Infrastructure.Messaging;
 using JobRecon.Notifications.Configuration;
 using JobRecon.Notifications.Contracts;
@@ -28,6 +29,8 @@ public static class ServiceCollectionExtensions
         services.Configure<RabbitMqSettings>(configuration.GetSection(RabbitMqSettings.SectionName));
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
         services.Configure<HangfireSettings>(configuration.GetSection(HangfireSettings.SectionName));
+
+        services.AddRedisCache(configuration);
 
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IPreferenceService, PreferenceService>();

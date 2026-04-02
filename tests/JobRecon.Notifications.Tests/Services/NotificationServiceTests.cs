@@ -3,6 +3,7 @@ using JobRecon.Notifications.Domain;
 using JobRecon.Notifications.Infrastructure;
 using JobRecon.Notifications.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -11,6 +12,7 @@ namespace JobRecon.Notifications.Tests.Services;
 public class NotificationServiceTests : IDisposable
 {
     private readonly NotificationsDbContext _dbContext;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<NotificationService> _logger;
     private readonly NotificationService _sut;
 
@@ -21,9 +23,10 @@ public class NotificationServiceTests : IDisposable
             .Options;
 
         _dbContext = new NotificationsDbContext(options);
+        _cache = Substitute.For<IDistributedCache>();
         _logger = Substitute.For<ILogger<NotificationService>>();
 
-        _sut = new NotificationService(_dbContext, _logger);
+        _sut = new NotificationService(_dbContext, _cache, _logger);
     }
 
     [Fact]

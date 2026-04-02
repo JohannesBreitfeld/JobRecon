@@ -1,5 +1,6 @@
 using System.Text;
 using JobRecon.Matching.Clients;
+using JobRecon.Infrastructure.Caching;
 using JobRecon.Infrastructure.Messaging;
 using JobRecon.Matching.Configuration;
 using JobRecon.Matching.Contracts;
@@ -57,17 +58,21 @@ public static class ServiceCollectionExtensions
             return Task.CompletedTask;
         }).ConfigureChannel(o => o.UnsafeUseInsecureChannelCallCredentials = true);
 
-        services.AddScoped<IProfileClient, ProfileClient>();
+        services.AddScoped<ProfileClient>();
+        services.AddScoped<IProfileClient, CachingProfileClient>();
         services.AddScoped<IJobsClient, JobsClient>();
 
-        // Ollama client for embeddings
+        // Ollama client for embeddings (with Redis caching decorator)
         var ollamaSettings = configuration.GetSection(OllamaSettings.SectionName).Get<OllamaSettings>()
             ?? new OllamaSettings();
-        services.AddHttpClient<IOllamaClient, OllamaClient>(client =>
+        services.AddHttpClient<OllamaClient>(client =>
         {
             client.BaseAddress = new Uri(ollamaSettings.BaseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
         });
+        services.AddScoped<IOllamaClient, CachingOllamaClient>();
+
+        services.AddRedisCache(configuration);
 
         // Qdrant vector store
         var qdrantSettings = configuration.GetSection(QdrantSettings.SectionName).Get<QdrantSettings>()

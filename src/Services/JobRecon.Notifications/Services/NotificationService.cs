@@ -3,19 +3,25 @@ using JobRecon.Notifications.Contracts;
 using JobRecon.Notifications.Domain;
 using JobRecon.Notifications.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace JobRecon.Notifications.Services;
 
 public sealed class NotificationService : INotificationService
 {
     private readonly NotificationsDbContext _dbContext;
+    private readonly IDistributedCache _cache;
     private readonly ILogger<NotificationService> _logger;
+
+    private static readonly TimeSpan UnreadCountTtl = TimeSpan.FromMinutes(2);
 
     public NotificationService(
         NotificationsDbContext dbContext,
+        IDistributedCache cache,
         ILogger<NotificationService> logger)
     {
         _dbContext = dbContext;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -37,6 +43,8 @@ public sealed class NotificationService : INotificationService
         _logger.LogInformation(
             "Created notification {NotificationId} for user {UserId}, type: {Type}",
             notification.Id, userId, type);
+
+        await InvalidateUnreadCountAsync(userId);
 
         return notification;
     }
@@ -83,6 +91,8 @@ public sealed class NotificationService : INotificationService
         notification.MarkAsRead();
         await _dbContext.SaveChangesAsync(ct);
 
+        await InvalidateUnreadCountAsync(userId);
+
         return true;
     }
 
@@ -98,13 +108,54 @@ public sealed class NotificationService : INotificationService
 
         _logger.LogInformation("Marked {Count} notifications as read for user {UserId}", count, userId);
 
+        await InvalidateUnreadCountAsync(userId);
+
         return count;
     }
 
     public async Task<int> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
     {
-        return await _dbContext.Notifications
+        var key = $"notif:unread:{userId}";
+
+        try
+        {
+            var cached = await _cache.GetStringAsync(key, ct);
+            if (cached is not null && int.TryParse(cached, out var cachedCount))
+                return cachedCount;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Redis read failed for unread count key {Key}", key);
+        }
+
+        var count = await _dbContext.Notifications
             .CountAsync(n => n.UserId == userId && !n.IsRead && n.Channel == NotificationChannel.InApp, ct);
+
+        try
+        {
+            await _cache.SetStringAsync(key, count.ToString(), new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = UnreadCountTtl
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Redis write failed for unread count key {Key}", key);
+        }
+
+        return count;
+    }
+
+    private async Task InvalidateUnreadCountAsync(Guid userId)
+    {
+        try
+        {
+            await _cache.RemoveAsync($"notif:unread:{userId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to invalidate unread count cache for user {UserId}", userId);
+        }
     }
 
     public async Task<bool> HasEventBeenProcessedAsync(Guid eventId, CancellationToken ct = default)

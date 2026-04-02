@@ -231,6 +231,7 @@ services:
       Ollama__BaseUrl: "http://ollama:11434"
       Qdrant__Host: qdrant
       Qdrant__GrpcPort: "6334"
+      Redis__ConnectionString: "redis:6379"
       GrpcApiKey: "${GRPC_API_KEY:-dev-grpc-api-key}"
     ports:
       - "5005:8080"
@@ -238,6 +239,8 @@ services:
       rabbitmq:
         condition: service_healthy
       qdrant:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       jobs:
         condition: service_started
@@ -263,12 +266,15 @@ services:
       RabbitMQ__Password: "${RABBITMQ_PASSWORD:-devpassword}"
       Email__SmtpHost: mailhog
       Email__SmtpPort: "1025"
+      Redis__ConnectionString: "redis:6379"
     ports:
       - "5006:8080"
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   gateway:
