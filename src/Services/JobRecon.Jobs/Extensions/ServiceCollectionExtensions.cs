@@ -6,6 +6,7 @@ using JobRecon.Infrastructure.Messaging;
 using JobRecon.Jobs.Configuration;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Infrastructure;
+using JobRecon.Infrastructure.Caching;
 using JobRecon.Jobs.Services;
 using JobRecon.Jobs.Services.Fetchers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -45,10 +46,14 @@ public static class ServiceCollectionExtensions
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<JobService>());
         services.AddScoped<IDomainEventDispatcher, MediatRDomainEventDispatcher>();
-        services.AddScoped<IJobService, JobService>();
+        services.AddKeyedScoped<IJobService, JobService>("inner");
+        services.AddScoped<IJobCacheInvalidator, JobCacheInvalidator>();
+        services.AddScoped<IJobService, CachingJobService>();
         services.AddScoped<IJobSourceService, JobSourceService>();
         services.AddScoped<IJobFetcherService, JobFetcherService>();
         services.AddScoped<IJobEnrichmentService, JobEnrichmentService>();
+
+        services.AddRedisCache(configuration);
 
         // Register job fetchers
         services.AddHttpClient<JobTechLinksFetcher>()

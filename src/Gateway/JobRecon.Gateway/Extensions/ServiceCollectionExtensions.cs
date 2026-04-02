@@ -1,7 +1,9 @@
 using System.IO.Compression;
 using System.Text;
 using AspNetCoreRateLimit;
+using AspNetCoreRateLimit.Redis;
 using JobRecon.Gateway.Configuration;
+using JobRecon.Infrastructure.Caching;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
@@ -78,12 +80,12 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.AddOptions();
-        services.AddMemoryCache();
+        services.AddRedisCache(configuration);
 
         services.Configure<IpRateLimitOptions>(configuration.GetSection("IpRateLimiting"));
         services.Configure<IpRateLimitPolicies>(configuration.GetSection("IpRateLimitPolicies"));
 
-        services.AddInMemoryRateLimiting();
+        services.AddDistributedRateLimiting();
         services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
 
         return services;

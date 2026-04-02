@@ -4,6 +4,7 @@ using JobRecon.Identity.Domain;
 using JobRecon.Identity.Infrastructure;
 using JobRecon.Identity.Services;
 using JobRecon.Domain.Common;
+using JobRecon.Infrastructure.Caching;
 using JobRecon.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -28,6 +29,8 @@ public static class ServiceCollectionExtensions
         services.AddJwtAuthentication(configuration);
         services.AddApplicationServices();
         services.AddOpenApiDocumentation();
+        services.AddRedisCache(configuration);
+        services.Configure<RateLimitSettings>(configuration.GetSection(RateLimitSettings.SectionName));
         services.AddHealthChecks()
             .AddDbContextCheck<IdentityDbContext>("database");
 

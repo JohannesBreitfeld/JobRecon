@@ -24,6 +24,7 @@ public sealed class JobFetcherService : IJobFetcherService
     private readonly JobsDbContext _dbContext;
     private readonly IEnumerable<IJobFetcher> _fetchers;
     private readonly IJobEventPublisher _eventPublisher;
+    private readonly IJobCacheInvalidator _cacheInvalidator;
     private readonly ILogger<JobFetcherService> _logger;
     private readonly AsyncRetryPolicy _saveRetryPolicy;
 
@@ -31,11 +32,13 @@ public sealed class JobFetcherService : IJobFetcherService
         JobsDbContext dbContext,
         IEnumerable<IJobFetcher> fetchers,
         IJobEventPublisher eventPublisher,
+        IJobCacheInvalidator cacheInvalidator,
         ILogger<JobFetcherService> logger)
     {
         _dbContext = dbContext;
         _fetchers = fetchers;
         _eventPublisher = eventPublisher;
+        _cacheInvalidator = cacheInvalidator;
         _logger = logger;
 
         _saveRetryPolicy = Policy
@@ -200,6 +203,8 @@ public sealed class JobFetcherService : IJobFetcherService
                     new JobsFetchedIntegrationEvent(
                         Guid.NewGuid(), sourceId, totalJobCount, newJobCount, DateTime.UtcNow),
                     cancellationToken);
+
+                await _cacheInvalidator.InvalidateJobDataAsync(cancellationToken);
             }
         }
         catch (Exception ex)

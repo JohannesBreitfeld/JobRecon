@@ -148,6 +148,7 @@ services:
       Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
       Jwt__Issuer: "JobRecon"
       Jwt__Audience: "JobRecon"
+      Redis__ConnectionString: "redis:6379"
       Kestrel__Endpoints__Http__Url: "http://0.0.0.0:5001"
       Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
       Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5011"
@@ -156,6 +157,8 @@ services:
       - "5001:5001"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   profile:
@@ -196,6 +199,7 @@ services:
       Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
       Jwt__Issuer: "JobRecon"
       Jwt__Audience: "JobRecon"
+      Redis__ConnectionString: "redis:6379"
       Kestrel__Endpoints__Http__Url: "http://0.0.0.0:5003"
       Kestrel__Endpoints__Http__Protocols: "Http1AndHttp2"
       Kestrel__Endpoints__Grpc__Url: "http://0.0.0.0:5013"
@@ -205,6 +209,8 @@ services:
       - "5003:5003"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   matching:
@@ -275,6 +281,7 @@ services:
       Jwt__SigningKey: "${JWT_SIGNING_KEY:-YourSuperSecretKeyThatIsAtLeast32CharactersLong!}"
       Jwt__Issuer: "JobRecon"
       Jwt__Audience: "JobRecon"
+      Redis__ConnectionString: "redis:6379"
       ReverseProxy__Clusters__identity__Destinations__destination1__Address: "http://identity:5001"
       ReverseProxy__Clusters__profile__Destinations__destination1__Address: "http://profile:5002"
       ReverseProxy__Clusters__jobs__Destinations__destination1__Address: "http://jobs:5003"
@@ -283,11 +290,18 @@ services:
     ports:
       - "5000:8080"
     depends_on:
-      - identity
-      - profile
-      - jobs
-      - matching
-      - notifications
+      redis:
+        condition: service_healthy
+      identity:
+        condition: service_started
+      profile:
+        condition: service_started
+      jobs:
+        condition: service_started
+      matching:
+        condition: service_started
+      notifications:
+        condition: service_started
 
   frontend:
     build:

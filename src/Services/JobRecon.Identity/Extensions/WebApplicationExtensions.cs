@@ -1,6 +1,7 @@
 using JobRecon.Identity.Domain;
 using JobRecon.Identity.Endpoints;
 using JobRecon.Identity.Infrastructure;
+using JobRecon.Identity.Middleware;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,7 @@ public static class WebApplicationExtensions
             });
         }
 
+        app.UseMiddleware<RedisRateLimitingMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();
 
