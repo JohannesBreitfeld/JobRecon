@@ -72,18 +72,20 @@ public sealed class MatchingService : IMatchingService
             _logger.LogInformation("Falling back to heuristic-only matching");
         }
 
+        var pp = PreprocessedProfile.From(profile);
+
         List<JobRecommendation> allRecommendations;
         int totalAnalyzed;
 
         if (useVectorScoring)
         {
             (allRecommendations, totalAnalyzed) = await MatchWithVectorPreFilterAsync(
-                profile, vectorScores, request.MinScore, cancellationToken);
+                pp, vectorScores, request.MinScore, cancellationToken);
         }
         else
         {
             (allRecommendations, totalAnalyzed) = await MatchHeuristicOnlyAsync(
-                profile, request.MinScore, cancellationToken);
+                pp, request.MinScore, cancellationToken);
         }
 
         // Sort by match score descending
@@ -134,7 +136,7 @@ public sealed class MatchingService : IMatchingService
     }
 
     private async Task<(List<JobRecommendation> Recommendations, int TotalAnalyzed)> MatchWithVectorPreFilterAsync(
-        ProfileDto profile,
+        PreprocessedProfile pp,
         Dictionary<Guid, float> vectorScores,
         double minScore,
         CancellationToken ct)
@@ -153,10 +155,10 @@ public sealed class MatchingService : IMatchingService
 
             totalAnalyzed++;
 
-            if (IsExcluded(profile, job))
+            if (IsExcluded(pp, job))
                 continue;
 
-            var heuristicScore = CalculateHeuristicScore(profile, job, out var factors);
+            var heuristicScore = CalculateHeuristicScore(pp, job, out var factors);
 
             // Blend vector and heuristic scores
             var blendedScore = (vectorScore * VectorWeight) + (heuristicScore * HeuristicWeight);
@@ -173,7 +175,7 @@ public sealed class MatchingService : IMatchingService
     }
 
     private async Task<(List<JobRecommendation> Recommendations, int TotalAnalyzed)> MatchHeuristicOnlyAsync(
-        ProfileDto profile,
+        PreprocessedProfile pp,
         double minScore,
         CancellationToken ct)
     {
@@ -196,10 +198,10 @@ public sealed class MatchingService : IMatchingService
             {
                 totalAnalyzed++;
 
-                if (IsExcluded(profile, job))
+                if (IsExcluded(pp, job))
                     continue;
 
-                var score = CalculateHeuristicScore(profile, job, out var factors);
+                var score = CalculateHeuristicScore(pp, job, out var factors);
 
                 if (score >= minScore)
                 {
@@ -248,7 +250,8 @@ public sealed class MatchingService : IMatchingService
         if (job == null)
             return null;
 
-        var heuristicScore = CalculateHeuristicScore(profile, job, out var factors);
+        var pp = PreprocessedProfile.From(profile);
+        var heuristicScore = CalculateHeuristicScore(pp, job, out var factors);
 
         // Try to get vector score for this specific job
         var vectorScores = await GetVectorScoresAsync(profile, cancellationToken);
@@ -257,38 +260,38 @@ public sealed class MatchingService : IMatchingService
             var blendedScore = (vectorScore * VectorWeight) + (heuristicScore * HeuristicWeight);
             factors.Add(new MatchFactor("Semantic Similarity", $"Vector score: {vectorScore:P0}", vectorScore, VectorWeight));
 
-            if (IsExcluded(profile, job))
+            if (IsExcluded(pp, job))
                 blendedScore = 0;
 
             return CreateRecommendation(job, Math.Round(blendedScore, 2), factors);
         }
 
-        if (IsExcluded(profile, job))
+        if (IsExcluded(pp, job))
             heuristicScore = 0;
 
         return CreateRecommendation(job, Math.Round(heuristicScore, 2), factors);
     }
 
-    private static double CalculateHeuristicScore(ProfileDto profile, JobDto job, out List<MatchFactor> factors)
+    private static double CalculateHeuristicScore(PreprocessedProfile pp, JobDto job, out List<MatchFactor> factors)
     {
         factors = [];
 
-        var skillScore = CalculateSkillScore(profile, job, out var skillDescription);
+        var skillScore = CalculateSkillScore(pp, job, out var skillDescription);
         factors.Add(new MatchFactor("Skills", skillDescription, skillScore, SkillWeight));
 
-        var titleScore = CalculateTitleScore(profile, job, out var titleDescription);
+        var titleScore = CalculateTitleScore(pp, job, out var titleDescription);
         factors.Add(new MatchFactor("Job Title", titleDescription, titleScore, TitleWeight));
 
-        var locationScore = CalculateLocationScore(profile, job, out var locationDescription);
+        var locationScore = CalculateLocationScore(pp, job, out var locationDescription);
         factors.Add(new MatchFactor("Location", locationDescription, locationScore, LocationWeight));
 
-        var salaryScore = CalculateSalaryScore(profile, job, out var salaryDescription);
+        var salaryScore = CalculateSalaryScore(pp, job, out var salaryDescription);
         factors.Add(new MatchFactor("Salary", salaryDescription, salaryScore, SalaryWeight));
 
-        var experienceScore = CalculateExperienceScore(profile, job, out var experienceDescription);
+        var experienceScore = CalculateExperienceScore(pp, job, out var experienceDescription);
         factors.Add(new MatchFactor("Experience", experienceDescription, experienceScore, ExperienceWeight));
 
-        var employmentScore = CalculateEmploymentTypeScore(profile, job, out var employmentDescription);
+        var employmentScore = CalculateEmploymentTypeScore(pp, job, out var employmentDescription);
         factors.Add(new MatchFactor("Employment Type", employmentDescription, employmentScore, EmploymentTypeWeight));
 
         return factors.Sum(f => f.Score * f.Weight);
@@ -313,17 +316,13 @@ public sealed class MatchingService : IMatchingService
             factors);
     }
 
-    private static double CalculateSkillScore(ProfileDto profile, JobDto job, out string description)
+    private static double CalculateSkillScore(PreprocessedProfile pp, JobDto job, out string description)
     {
-        if (profile.Skills.Count == 0)
+        if (pp.NormalizedSkills.Count == 0)
         {
             description = "No skills in profile";
             return 1.0;
         }
-
-        var userSkills = profile.Skills
-            .Select(s => s.Name.ToLowerInvariant().Trim())
-            .ToHashSet();
 
         var jobSkills = (job.RequiredSkills ?? "")
             .Split([',', ';', '|'], StringSplitOptions.RemoveEmptyEntries)
@@ -349,7 +348,7 @@ public sealed class MatchingService : IMatchingService
 
         foreach (var js in allJobSkills)
         {
-            if (userSkills.Contains(js) || userSkills.Any(us => us.Contains(js) || js.Contains(us)))
+            if (pp.NormalizedSkills.Contains(js) || pp.NormalizedSkills.Any(us => us.Contains(js) || js.Contains(us)))
             {
                 matchedSkills.Add(js);
             }
@@ -362,7 +361,7 @@ public sealed class MatchingService : IMatchingService
         // Slow path: Levenshtein only for remaining unmatched skills
         foreach (var js in unmatchedJobSkills)
         {
-            if (userSkills.Any(us => LevenshteinSimilarity(us, js) > 0.8))
+            if (pp.NormalizedSkills.Any(us => LevenshteinSimilarity(us, js) > 0.8))
             {
                 matchedSkills.Add(js);
             }
@@ -371,7 +370,7 @@ public sealed class MatchingService : IMatchingService
         var matchRatio = (double)matchedSkills.Count / allJobSkills.Count;
 
         // Bonus for expert-level matching skills
-        var expertBonus = profile.Skills
+        var expertBonus = pp.Skills
             .Where(s => s.Level == "Expert" || s.Level == "Advanced")
             .Any(s => matchedSkills.Any(ms =>
                 ms.Contains(s.Name.ToLowerInvariant()) ||
@@ -387,19 +386,19 @@ public sealed class MatchingService : IMatchingService
         return score;
     }
 
-    private static double CalculateTitleScore(ProfileDto profile, JobDto job, out string description)
+    private static double CalculateTitleScore(PreprocessedProfile pp, JobDto job, out string description)
     {
         var jobTitle = job.Title.ToLowerInvariant();
 
         // Check desired job titles
-        if (profile.DesiredJobTitles.Count > 0)
+        if (pp.DesiredJobTitlesLower.Count > 0)
         {
-            var bestMatch = profile.DesiredJobTitles
+            var bestMatch = pp.DesiredJobTitlesLower
                 .Select(dt => new
                 {
-                    Title = dt.Title,
+                    TitleLower = dt.TitleLower,
                     Priority = dt.Priority,
-                    Similarity = CalculateTitleSimilarity(dt.Title.ToLowerInvariant(), jobTitle)
+                    Similarity = CalculateTitleSimilarity(dt.TitleLower, jobTitle)
                 })
                 .OrderByDescending(x => x.Similarity)
                 .ThenBy(x => x.Priority)
@@ -407,24 +406,24 @@ public sealed class MatchingService : IMatchingService
 
             if (bestMatch != null && bestMatch.Similarity > 0.3)
             {
-                description = $"Matches desired title: {bestMatch.Title}";
+                description = $"Matches desired title: {bestMatch.TitleLower}";
                 return bestMatch.Similarity;
             }
         }
 
         // Check current job title
-        if (!string.IsNullOrEmpty(profile.CurrentJobTitle))
+        if (pp.CurrentJobTitleLower is not null)
         {
-            var similarity = CalculateTitleSimilarity(profile.CurrentJobTitle.ToLowerInvariant(), jobTitle);
+            var similarity = CalculateTitleSimilarity(pp.CurrentJobTitleLower, jobTitle);
             if (similarity > 0.3)
             {
-                description = $"Similar to current role: {profile.CurrentJobTitle}";
+                description = $"Similar to current role: {pp.CurrentJobTitleLower}";
                 return similarity * 0.8; // Slightly lower weight for current title
             }
         }
 
         // No title data on either side — neutral
-        if (string.IsNullOrEmpty(profile.CurrentJobTitle) && profile.DesiredJobTitles.Count == 0)
+        if (pp.CurrentJobTitleLower is null && pp.DesiredJobTitlesLower.Count == 0)
         {
             description = "No title set in profile";
             return 1.0;
@@ -454,9 +453,9 @@ public sealed class MatchingService : IMatchingService
         return (double)intersection / union;
     }
 
-    private static double CalculateLocationScore(ProfileDto profile, JobDto job, out string description)
+    private static double CalculateLocationScore(PreprocessedProfile pp, JobDto job, out string description)
     {
-        var prefs = profile.Preferences;
+        var prefs = pp.Preferences;
 
         // Check work location type preferences
         if (prefs != null && !string.IsNullOrEmpty(job.WorkLocationType))
@@ -492,7 +491,7 @@ public sealed class MatchingService : IMatchingService
         }
 
         // Check preferred locations — applies regardless of whether job has a location
-        if (prefs != null && !string.IsNullOrEmpty(prefs.PreferredLocations))
+        if (pp.PreferredLocationsLower.Count > 0)
         {
             if (string.IsNullOrEmpty(job.Location))
             {
@@ -501,12 +500,8 @@ public sealed class MatchingService : IMatchingService
             }
 
             var jobLocation = job.Location.ToLowerInvariant();
-            var preferredLocations = prefs.PreferredLocations
-                .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries)
-                .Select(l => l.Trim().ToLowerInvariant())
-                .ToList();
 
-            if (preferredLocations.Any(pl => jobLocation.Contains(pl) || pl.Contains(jobLocation)))
+            if (pp.PreferredLocationsLower.Any(pl => jobLocation.Contains(pl) || pl.Contains(jobLocation)))
             {
                 description = $"Location matches preference: {job.Location}";
                 return 0.9;
@@ -517,11 +512,10 @@ public sealed class MatchingService : IMatchingService
         }
 
         // No preferred locations — use current location as a soft signal if available
-        if (!string.IsNullOrEmpty(profile.Location) && !string.IsNullOrEmpty(job.Location))
+        if (pp.LocationLower is not null && !string.IsNullOrEmpty(job.Location))
         {
-            var userLocation = profile.Location.ToLowerInvariant();
             var jobLocation = job.Location.ToLowerInvariant();
-            if (jobLocation.Contains(userLocation) || userLocation.Contains(jobLocation))
+            if (jobLocation.Contains(pp.LocationLower) || pp.LocationLower.Contains(jobLocation))
             {
                 description = $"Near your location: {job.Location}";
                 return 0.8;
@@ -532,9 +526,9 @@ public sealed class MatchingService : IMatchingService
         return 1.0;
     }
 
-    private static double CalculateSalaryScore(ProfileDto profile, JobDto job, out string description)
+    private static double CalculateSalaryScore(PreprocessedProfile pp, JobDto job, out string description)
     {
-        var prefs = profile.Preferences;
+        var prefs = pp.Preferences;
 
         if (prefs == null || (!prefs.MinSalary.HasValue && !prefs.MaxSalary.HasValue))
         {
@@ -572,15 +566,15 @@ public sealed class MatchingService : IMatchingService
         return 0.1;
     }
 
-    private static double CalculateExperienceScore(ProfileDto profile, JobDto job, out string description)
+    private static double CalculateExperienceScore(PreprocessedProfile pp, JobDto job, out string description)
     {
-        if (!profile.YearsOfExperience.HasValue)
+        if (!pp.YearsOfExperience.HasValue)
         {
             description = "Experience not specified in profile";
             return 1.0;
         }
 
-        var userYears = profile.YearsOfExperience.Value;
+        var userYears = pp.YearsOfExperience.Value;
 
         if (!job.ExperienceYearsMin.HasValue && !job.ExperienceYearsMax.HasValue)
         {
@@ -615,11 +609,9 @@ public sealed class MatchingService : IMatchingService
         return 0.2;
     }
 
-    private static double CalculateEmploymentTypeScore(ProfileDto profile, JobDto job, out string description)
+    private static double CalculateEmploymentTypeScore(PreprocessedProfile pp, JobDto job, out string description)
     {
-        var prefs = profile.Preferences;
-
-        if (prefs == null || string.IsNullOrEmpty(prefs.PreferredEmploymentTypes))
+        if (pp.PreferredEmploymentTypesLower.Count == 0)
         {
             description = "No employment type preference";
             return 1.0;
@@ -631,15 +623,10 @@ public sealed class MatchingService : IMatchingService
             return 0.3;
         }
 
-        var preferredTypes = prefs.PreferredEmploymentTypes
-            .Split([',', ';', '|'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(t => t.Trim().ToLowerInvariant())
-            .ToHashSet();
-
         var jobType = job.EmploymentType.ToLowerInvariant();
 
-        if (preferredTypes.Contains(jobType) ||
-            preferredTypes.Any(pt => jobType.Contains(pt) || pt.Contains(jobType)))
+        if (pp.PreferredEmploymentTypesLower.Contains(jobType) ||
+            pp.PreferredEmploymentTypesLower.Any(pt => jobType.Contains(pt) || pt.Contains(jobType)))
         {
             description = $"Employment type matches: {job.EmploymentType}";
             return 1.0;
@@ -682,27 +669,13 @@ public sealed class MatchingService : IMatchingService
         }
     }
 
-    private static bool IsExcluded(ProfileDto profile, JobDto job)
+    private static bool IsExcluded(PreprocessedProfile pp, JobDto job)
     {
-        var prefs = profile.Preferences;
-        if (prefs == null) return false;
+        if (pp.ExcludedCompaniesLower.Count == 0)
+            return false;
 
-        // Check excluded companies
-        if (!string.IsNullOrEmpty(prefs.ExcludedCompanies))
-        {
-            var excluded = prefs.ExcludedCompanies
-                .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries)
-                .Select(c => c.Trim().ToLowerInvariant())
-                .ToHashSet();
-
-            var companyName = job.Company.Name.ToLowerInvariant();
-            if (excluded.Any(e => companyName.Contains(e) || e.Contains(companyName)))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        var companyName = job.Company.Name.ToLowerInvariant();
+        return pp.ExcludedCompaniesLower.Any(e => companyName.Contains(e) || e.Contains(companyName));
     }
 
     private static MatchingSummary BuildSummary(

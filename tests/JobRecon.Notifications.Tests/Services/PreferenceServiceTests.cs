@@ -4,6 +4,7 @@ using JobRecon.Notifications.Domain;
 using JobRecon.Notifications.Infrastructure;
 using JobRecon.Notifications.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -22,9 +23,10 @@ public class PreferenceServiceTests : IDisposable
             .Options;
 
         _dbContext = new NotificationsDbContext(options);
+        var cache = Substitute.For<IDistributedCache>();
         _logger = Substitute.For<ILogger<PreferenceService>>();
 
-        _sut = new PreferenceService(_dbContext, _logger);
+        _sut = new PreferenceService(_dbContext, cache, _logger);
     }
 
     [Fact]
