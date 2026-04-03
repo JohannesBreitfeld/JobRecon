@@ -63,10 +63,17 @@ public sealed record DesiredJobTitleDto(
     string Title,
     int Priority);
 
+public sealed record PreferredLocationDto(
+    int LocalityId,
+    string Name,
+    double Latitude,
+    double Longitude,
+    int? MaxDistanceKm);
+
 public sealed record JobPreferenceDto(
     decimal? MinSalary,
     decimal? MaxSalary,
-    string? PreferredLocations,
+    IReadOnlyList<PreferredLocationDto> PreferredLocations,
     bool IsRemotePreferred,
     bool IsHybridAccepted,
     bool IsOnSiteAccepted,
@@ -91,7 +98,10 @@ public sealed record JobDto(
     DateTime? PostedAt,
     string? ExternalUrl,
     CompanyDto Company,
-    List<string> Tags);
+    List<string> Tags,
+    double? Latitude = null,
+    double? Longitude = null,
+    int? LocalityId = null);
 
 public sealed record CompanyDto(
     Guid Id,

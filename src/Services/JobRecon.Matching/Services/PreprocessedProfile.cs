@@ -8,8 +8,7 @@ internal sealed class PreprocessedProfile
     public required List<SkillDto> Skills { get; init; }
     public required string? CurrentJobTitleLower { get; init; }
     public required List<(string TitleLower, int Priority)> DesiredJobTitlesLower { get; init; }
-    public required List<string> PreferredLocationsLower { get; init; }
-    public required string? LocationLower { get; init; }
+    public required IReadOnlyList<PreferredLocationDto> PreferredLocations { get; init; }
     public required HashSet<string> PreferredEmploymentTypesLower { get; init; }
     public required HashSet<string> ExcludedCompaniesLower { get; init; }
     public required JobPreferenceDto? Preferences { get; init; }
@@ -29,13 +28,7 @@ internal sealed class PreprocessedProfile
             DesiredJobTitlesLower = profile.DesiredJobTitles
                 .Select(dt => (dt.Title.ToLowerInvariant(), dt.Priority))
                 .ToList(),
-            PreferredLocationsLower = string.IsNullOrEmpty(prefs?.PreferredLocations)
-                ? []
-                : prefs!.PreferredLocations
-                    .Split([',', ';'], StringSplitOptions.RemoveEmptyEntries)
-                    .Select(l => l.Trim().ToLowerInvariant())
-                    .ToList(),
-            LocationLower = profile.Location?.ToLowerInvariant(),
+            PreferredLocations = prefs?.PreferredLocations ?? [],
             PreferredEmploymentTypesLower = string.IsNullOrEmpty(prefs?.PreferredEmploymentTypes)
                 ? []
                 : prefs!.PreferredEmploymentTypes

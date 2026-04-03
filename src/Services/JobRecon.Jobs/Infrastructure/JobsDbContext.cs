@@ -14,6 +14,7 @@ public sealed class JobsDbContext : DbContext
     public DbSet<JobSource> JobSources => Set<JobSource>();
     public DbSet<JobTag> JobTags => Set<JobTag>();
     public DbSet<SavedJob> SavedJobs => Set<SavedJob>();
+    public DbSet<Locality> Localities => Set<Locality>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +96,14 @@ public sealed class JobsDbContext : DbContext
             entity.Property(e => e.Hash).HasMaxLength(64);
             entity.Property(e => e.EnrichmentError).HasMaxLength(500);
 
+            entity.HasIndex(e => e.LocalityId);
+            entity.Property(e => e.Latitude).HasPrecision(9, 6);
+            entity.Property(e => e.Longitude).HasPrecision(9, 6);
+            entity.HasOne<Locality>()
+                .WithMany()
+                .HasForeignKey(e => e.LocalityId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasMany(e => e.Tags)
                 .WithOne(t => t.Job)
                 .HasForeignKey(t => t.JobId)
@@ -104,6 +113,20 @@ public sealed class JobsDbContext : DbContext
                 .WithOne(s => s.Job)
                 .HasForeignKey(s => s.JobId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Locality>(entity =>
+        {
+            entity.HasKey(e => e.GeoNameId);
+            entity.Property(e => e.GeoNameId).ValueGeneratedNever();
+            entity.HasIndex(e => e.AsciiName);
+            entity.HasIndex(e => e.Population);
+
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.AsciiName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.AlternateNames).HasMaxLength(10000);
+            entity.Property(e => e.FeatureCode).HasMaxLength(10).IsRequired();
+            entity.Property(e => e.Admin2Code).HasMaxLength(20);
         });
 
         modelBuilder.Entity<JobTag>(entity =>

@@ -24,6 +24,7 @@ public sealed class ProfileGrpcService(
             .Include(p => p.Skills)
             .Include(p => p.DesiredJobTitles)
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, context.CancellationToken);
 
@@ -75,11 +76,24 @@ public sealed class ProfileGrpcService(
                 IsHybridAccepted = pref.IsHybridAccepted,
                 IsOnSiteAccepted = pref.IsOnSiteAccepted,
                 IsActivelyLooking = pref.IsActivelyLooking,
-                PreferredLocations = pref.PreferredLocations ?? "",
                 PreferredEmploymentTypes = pref.PreferredEmploymentTypes.ToString(),
                 PreferredIndustries = pref.PreferredIndustries ?? "",
                 ExcludedCompanies = pref.ExcludedCompanies ?? ""
             };
+
+            foreach (var loc in pref.PreferredLocations)
+            {
+                var locMsg = new PreferredLocationMessage
+                {
+                    LocalityId = loc.LocalityId,
+                    Name = loc.Name,
+                    Latitude = loc.Latitude,
+                    Longitude = loc.Longitude
+                };
+                if (loc.MaxDistanceKm.HasValue)
+                    locMsg.MaxDistanceKm = loc.MaxDistanceKm.Value;
+                prefMsg.PreferredLocations.Add(locMsg);
+            }
 
             if (pref.MinSalary.HasValue)
                 prefMsg.MinSalary = pref.MinSalary.Value;

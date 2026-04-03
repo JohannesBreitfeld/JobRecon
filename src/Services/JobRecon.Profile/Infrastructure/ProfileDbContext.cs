@@ -14,6 +14,7 @@ public sealed class ProfileDbContext : DbContext
     public DbSet<DesiredJobTitle> DesiredJobTitles => Set<DesiredJobTitle>();
     public DbSet<JobPreference> JobPreferences => Set<JobPreference>();
     public DbSet<CVDocument> CVDocuments => Set<CVDocument>();
+    public DbSet<PreferredLocation> PreferredLocations => Set<PreferredLocation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,10 +76,24 @@ public sealed class ProfileDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.UserProfileId).IsUnique();
 
-            entity.Property(e => e.PreferredLocations).HasMaxLength(1000);
             entity.Property(e => e.PreferredIndustries).HasMaxLength(1000);
             entity.Property(e => e.ExcludedCompanies).HasMaxLength(1000);
             entity.Property(e => e.PreferredEmploymentTypes).HasConversion<string>().HasMaxLength(50);
+
+            entity.HasMany(e => e.PreferredLocations)
+                .WithOne(l => l.JobPreference)
+                .HasForeignKey(l => l.JobPreferenceId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PreferredLocation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.JobPreferenceId, e.LocalityId }).IsUnique();
+
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Latitude).HasPrecision(9, 6);
+            entity.Property(e => e.Longitude).HasPrecision(9, 6);
         });
 
         modelBuilder.Entity<CVDocument>(entity =>

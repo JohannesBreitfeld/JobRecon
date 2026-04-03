@@ -307,7 +307,10 @@ public class MatchingServiceTests
             ],
             new JobPreferenceDto(
                 40000m, 80000m,
-                "Stockholm, Gothenburg",
+                [
+                    new PreferredLocationDto(2673730, "Stockholm", 59.3294, 18.0687, 50),
+                    new PreferredLocationDto(2711537, "Gothenburg", 57.7089, 11.9746, null)
+                ],
                 true, true, false,
                 "FullTime, Contract",
                 "IT, Tech",
@@ -332,7 +335,8 @@ public class MatchingServiceTests
                 DateTime.UtcNow,
                 "https://example.com/job1",
                 new CompanyDto(Guid.NewGuid(), "Tech Corp", "https://logo.com", "IT"),
-                ["C#", ".NET", "SQL", "Backend"]),
+                ["C#", ".NET", "SQL", "Backend"],
+                Latitude: 59.3294, Longitude: 18.0687, LocalityId: 2673730),
             new(
                 Guid.NewGuid(),
                 "Frontend Developer",
@@ -346,7 +350,8 @@ public class MatchingServiceTests
                 DateTime.UtcNow,
                 "https://example.com/job2",
                 new CompanyDto(Guid.NewGuid(), "Web Agency", null, "IT"),
-                ["JavaScript", "React", "Frontend"]),
+                ["JavaScript", "React", "Frontend"],
+                Latitude: 57.7089, Longitude: 11.9746, LocalityId: 2711537),
             new(
                 Guid.NewGuid(),
                 "Data Analyst",
@@ -360,7 +365,8 @@ public class MatchingServiceTests
                 DateTime.UtcNow,
                 "https://example.com/job3",
                 new CompanyDto(Guid.NewGuid(), "Analytics Co", null, "Finance"),
-                ["SQL", "Data", "Analytics"])
+                ["SQL", "Data", "Analytics"],
+                Latitude: 55.6059, Longitude: 13.0007, LocalityId: 2692969)
         ];
     }
 }

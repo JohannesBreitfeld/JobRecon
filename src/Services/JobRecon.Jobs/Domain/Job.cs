@@ -30,6 +30,11 @@ public sealed class Job : AggregateRoot<Guid>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    // Geolocation
+    public int? LocalityId { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+
     // Enrichment tracking
     public bool IsEnriched { get; set; }
     public DateTime? EnrichedAt { get; set; }

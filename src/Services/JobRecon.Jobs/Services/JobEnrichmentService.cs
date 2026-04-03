@@ -15,6 +15,7 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
 {
     private readonly JobsDbContext _dbContext;
     private readonly HttpClient _httpClient;
+    private readonly IGeocodingService _geocodingService;
     private readonly ILogger<JobEnrichmentService> _logger;
     private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
     private readonly ConcurrentDictionary<string, DateTime> _domainLastAccess = new();
@@ -23,10 +24,12 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
     public JobEnrichmentService(
         JobsDbContext dbContext,
         HttpClient httpClient,
+        IGeocodingService geocodingService,
         ILogger<JobEnrichmentService> logger)
     {
         _dbContext = dbContext;
         _httpClient = httpClient;
+        _geocodingService = geocodingService;
         _logger = logger;
 
         _retryPolicy = Policy
@@ -135,6 +138,18 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
             if (!string.IsNullOrEmpty(enrichedData.Benefits) && string.IsNullOrEmpty(job.Benefits))
             {
                 job.Benefits = enrichedData.Benefits;
+            }
+
+            // Geocode location if not already geocoded
+            if (job.LocalityId is null && !string.IsNullOrEmpty(job.Location))
+            {
+                var geoResult = await _geocodingService.GeocodeAsync(job.Location, cancellationToken);
+                if (geoResult is not null)
+                {
+                    job.LocalityId = geoResult.GeoNameId;
+                    job.Latitude = geoResult.Latitude;
+                    job.Longitude = geoResult.Longitude;
+                }
             }
 
             job.IsEnriched = true;

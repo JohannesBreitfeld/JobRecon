@@ -30,6 +30,7 @@ public sealed class ProfileService : IProfileService
             .Include(p => p.DesiredJobTitles)
             .Include(p => p.Skills)
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .Include(p => p.CVDocuments)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
@@ -101,6 +102,7 @@ public sealed class ProfileService : IProfileService
             .Include(p => p.DesiredJobTitles)
             .Include(p => p.Skills)
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .Include(p => p.CVDocuments)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
@@ -226,6 +228,7 @@ public sealed class ProfileService : IProfileService
     {
         var profile = await _dbContext.UserProfiles
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
@@ -249,6 +252,7 @@ public sealed class ProfileService : IProfileService
     {
         var profile = await _dbContext.UserProfiles
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
         if (profile is null)
@@ -270,7 +274,6 @@ public sealed class ProfileService : IProfileService
         var pref = profile.JobPreference;
         pref.MinSalary = request.MinSalary;
         pref.MaxSalary = request.MaxSalary;
-        pref.PreferredLocations = request.PreferredLocations;
         pref.IsRemotePreferred = request.IsRemotePreferred;
         pref.IsHybridAccepted = request.IsHybridAccepted;
         pref.IsOnSiteAccepted = request.IsOnSiteAccepted;
@@ -280,6 +283,25 @@ public sealed class ProfileService : IProfileService
         pref.IsActivelyLooking = request.IsActivelyLooking;
         pref.AvailableFrom = request.AvailableFrom;
         pref.NoticePeriodDays = request.NoticePeriodDays;
+
+        // Replace preferred locations
+        pref.PreferredLocations.Clear();
+        if (request.PreferredLocations is { Count: > 0 })
+        {
+            foreach (var loc in request.PreferredLocations)
+            {
+                pref.PreferredLocations.Add(new PreferredLocation
+                {
+                    Id = Guid.NewGuid(),
+                    JobPreferenceId = pref.Id,
+                    LocalityId = loc.LocalityId,
+                    Name = loc.Name,
+                    Latitude = loc.Latitude,
+                    Longitude = loc.Longitude,
+                    MaxDistanceKm = loc.MaxDistanceKm
+                });
+            }
+        }
 
         profile.UpdatedAt = DateTime.UtcNow;
 
@@ -489,7 +511,8 @@ public sealed class ProfileService : IProfileService
             Id = pref.Id,
             MinSalary = pref.MinSalary,
             MaxSalary = pref.MaxSalary,
-            PreferredLocations = pref.PreferredLocations,
+            PreferredLocations = pref.PreferredLocations.Select(l => new PreferredLocationResponse(
+                l.Id, l.LocalityId, l.Name, l.Latitude, l.Longitude, l.MaxDistanceKm)).ToList(),
             IsRemotePreferred = pref.IsRemotePreferred,
             IsHybridAccepted = pref.IsHybridAccepted,
             IsOnSiteAccepted = pref.IsOnSiteAccepted,

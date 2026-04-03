@@ -490,39 +490,74 @@ public sealed class MatchingService : IMatchingService
             }
         }
 
-        // Check preferred locations — applies regardless of whether job has a location
-        if (pp.PreferredLocationsLower.Count > 0)
+        // Geolocation-based matching
+        if (pp.PreferredLocations.Count > 0)
         {
-            if (string.IsNullOrEmpty(job.Location))
+            if (!job.Latitude.HasValue || !job.Longitude.HasValue)
             {
-                description = "Job has no location — cannot verify against preferred areas";
+                description = "Job has no coordinates — cannot verify against preferred areas";
                 return 0.3;
             }
 
-            var jobLocation = job.Location.ToLowerInvariant();
+            var bestScore = 0.0;
+            var bestDescription = "";
 
-            if (pp.PreferredLocationsLower.Any(pl => jobLocation.Contains(pl) || pl.Contains(jobLocation)))
+            foreach (var loc in pp.PreferredLocations)
             {
-                description = $"Location matches preference: {job.Location}";
-                return 0.9;
+                var distanceKm = GeoMath.HaversineDistanceKm(
+                    loc.Latitude, loc.Longitude,
+                    job.Latitude.Value, job.Longitude.Value);
+
+                if (loc.MaxDistanceKm.HasValue)
+                {
+                    var maxDist = loc.MaxDistanceKm.Value;
+
+                    if (distanceKm > maxDist)
+                        continue;
+
+                    // Linear decay: 1.0 at center, 0.3 at edge of radius
+                    var score = 1.0 - (distanceKm / maxDist) * 0.7;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestDescription = $"{loc.Name}: {distanceKm:F0}km away (within {maxDist}km radius)";
+                    }
+                }
+                else
+                {
+                    // No max distance: exact locality match only
+                    if (job.LocalityId.HasValue && job.LocalityId.Value == loc.LocalityId)
+                    {
+                        bestScore = 1.0;
+                        bestDescription = $"Exact match: {loc.Name}";
+                        break;
+                    }
+
+                    // Same-city tolerance: very close match (< 5km)
+                    if (distanceKm < 5.0)
+                    {
+                        var score = 0.95;
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestDescription = $"Near {loc.Name}: {distanceKm:F1}km";
+                        }
+                    }
+                }
             }
 
-            description = $"Location ({job.Location}) outside preferred areas";
-            return 0.2;
-        }
-
-        // No preferred locations — use current location as a soft signal if available
-        if (pp.LocationLower is not null && !string.IsNullOrEmpty(job.Location))
-        {
-            var jobLocation = job.Location.ToLowerInvariant();
-            if (jobLocation.Contains(pp.LocationLower) || pp.LocationLower.Contains(jobLocation))
+            if (bestScore > 0)
             {
-                description = $"Near your location: {job.Location}";
-                return 0.8;
+                description = bestDescription;
+                return bestScore;
             }
+
+            description = $"Location ({job.Location}) outside all preferred areas";
+            return 0.0;
         }
 
-        description = "No location data to match on";
+        // No preferred locations set — neutral
+        description = "No location preference set";
         return 1.0;
     }
 

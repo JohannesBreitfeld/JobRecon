@@ -52,6 +52,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJobSourceService, JobSourceService>();
         services.AddScoped<IJobFetcherService, JobFetcherService>();
         services.AddScoped<IJobEnrichmentService, JobEnrichmentService>();
+        services.AddScoped<ILocalityService, LocalityService>();
+        services.AddScoped<ILocalityImportService, LocalityImportService>();
+        services.AddScoped<IGeocodingService, GeocodingService>();
 
         services.AddRedisCache(configuration);
 

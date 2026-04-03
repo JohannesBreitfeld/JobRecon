@@ -89,6 +89,9 @@ public sealed class JobsClient(
                 msg.Company.Name,
                 msg.Company.HasLogoUrl ? msg.Company.LogoUrl : null,
                 msg.Company.HasIndustry ? msg.Company.Industry : null),
-            msg.Tags.ToList());
+            msg.Tags.ToList(),
+            msg.HasLatitude ? msg.Latitude : null,
+            msg.HasLongitude ? msg.Longitude : null,
+            msg.HasLocalityId ? msg.LocalityId : null);
     }
 }

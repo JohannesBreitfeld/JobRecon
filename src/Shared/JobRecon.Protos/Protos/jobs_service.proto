@@ -55,6 +55,9 @@ message JobMessage {
   optional string external_url = 14;
   CompanyMessage company = 15;
   repeated string tags = 16;
+  optional double latitude = 17;
+  optional double longitude = 18;
+  optional int32 locality_id = 19;
 }
 
 message CompanyMessage {
