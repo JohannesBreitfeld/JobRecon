@@ -55,6 +55,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocalityService, LocalityService>();
         services.AddScoped<ILocalityImportService, LocalityImportService>();
         services.AddScoped<IGeocodingService, GeocodingService>();
+        services.AddScoped<IGeocodingBackfillService, GeocodingBackfillService>();
 
         services.AddRedisCache(configuration);
 

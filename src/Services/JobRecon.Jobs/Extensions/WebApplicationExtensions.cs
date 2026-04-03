@@ -41,6 +41,25 @@ public static class WebApplicationExtensions
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<JobsDbContext>();
         await dbContext.Database.MigrateAsync();
+
+        // Seed localities if empty
+        if (!await dbContext.Localities.AnyAsync())
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<JobsDbContext>>();
+            var seedFile = Path.Combine(AppContext.BaseDirectory, "Data", "se-localities.txt");
+
+            if (File.Exists(seedFile))
+            {
+                logger.LogInformation("Seeding localities from {FilePath}", seedFile);
+                var importService = scope.ServiceProvider.GetRequiredService<ILocalityImportService>();
+                var count = await importService.ImportFromGeoNamesFileAsync(seedFile);
+                logger.LogInformation("Seeded {Count} localities", count);
+            }
+            else
+            {
+                logger.LogWarning("Locality seed file not found at {FilePath}. Run import manually.", seedFile);
+            }
+        }
     }
 
     public static void ConfigureRecurringJobs(this WebApplication app)
@@ -56,6 +75,12 @@ public static class WebApplicationExtensions
             "enrich-pending-jobs",
             service => service.EnrichPendingJobsAsync(50, CancellationToken.None),
             "*/15 * * * *"); // Every 15 minutes
+
+        // Backfill geocoding for existing jobs (one-time, then self-disabling)
+        RecurringJob.AddOrUpdate<IGeocodingBackfillService>(
+            "backfill-geocoding",
+            service => service.BackfillAsync(100, CancellationToken.None),
+            "*/10 * * * *"); // Every 10 minutes until all jobs are geocoded
     }
 }
 
