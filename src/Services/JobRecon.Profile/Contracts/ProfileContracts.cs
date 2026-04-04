@@ -69,11 +69,26 @@ public sealed record SkillResponse
     public int? YearsOfExperience { get; init; }
 }
 
+public sealed record PreferredLocationRequest(
+    int LocalityId,
+    string Name,
+    double Latitude,
+    double Longitude,
+    int? MaxDistanceKm);
+
+public sealed record PreferredLocationResponse(
+    Guid Id,
+    int LocalityId,
+    string Name,
+    double Latitude,
+    double Longitude,
+    int? MaxDistanceKm);
+
 public sealed record UpdateJobPreferenceRequest
 {
     public int? MinSalary { get; init; }
     public int? MaxSalary { get; init; }
-    public string? PreferredLocations { get; init; }
+    public List<PreferredLocationRequest>? PreferredLocations { get; init; }
     public bool IsRemotePreferred { get; init; }
     public bool IsHybridAccepted { get; init; }
     public bool IsOnSiteAccepted { get; init; }
@@ -90,7 +105,7 @@ public sealed record JobPreferenceResponse
     public required Guid Id { get; init; }
     public int? MinSalary { get; init; }
     public int? MaxSalary { get; init; }
-    public string? PreferredLocations { get; init; }
+    public required List<PreferredLocationResponse> PreferredLocations { get; init; }
     public required bool IsRemotePreferred { get; init; }
     public required bool IsHybridAccepted { get; init; }
     public required bool IsOnSiteAccepted { get; init; }

@@ -8,6 +8,7 @@ import {
   IconButton,
   Collapse,
   Link,
+  Tooltip,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -52,7 +53,16 @@ export function MatchCard({ recommendation, onJobClick }: MatchCardProps) {
   };
 
   return (
-    <Card sx={{ mb: 2 }}>
+    <Card
+      elevation={0}
+      sx={{
+        mb: 2,
+        border: 1,
+        borderColor: 'divider',
+        transition: 'box-shadow 0.15s ease',
+        '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.06)' },
+      }}
+    >
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box sx={{ flex: 1 }}>
@@ -108,25 +118,32 @@ export function MatchCard({ recommendation, onJobClick }: MatchCardProps) {
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', ml: 2 }}>
-            <Box
-              sx={{
-                width: 56,
-                height: 56,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: getScoreBgColor(recommendation.matchScore),
-                color: '#fff',
-                fontWeight: 'bold',
-                fontSize: '1.1rem',
-              }}
-            >
-              {scorePercent}%
-            </Box>
+            <Tooltip title="Matchscore visar hur väl jobbet passar din profil baserat på kompetenser, erfarenhet och preferenser">
+              <Box
+                sx={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: '50%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: getScoreBgColor(recommendation.matchScore),
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  cursor: 'help',
+                }}
+              >
+                <Box sx={{ fontSize: '1.1rem', lineHeight: 1 }}>{scorePercent}%</Box>
+                <Box sx={{ fontSize: '0.55rem', fontWeight: 500, mt: 0.2, opacity: 0.9 }}>
+                  {getScoreLabel(recommendation.matchScore)}
+                </Box>
+              </Box>
+            </Tooltip>
             <IconButton
               size="small"
               onClick={() => setExpanded(!expanded)}
+              aria-label={expanded ? 'Dölj detaljer' : 'Visa detaljer'}
               sx={{
                 mt: 0.5,
                 transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -152,8 +169,15 @@ export function MatchCard({ recommendation, onJobClick }: MatchCardProps) {
 }
 
 function getScoreBgColor(score: number): string {
-  if (score >= 0.8) return '#2e7d32';
-  if (score >= 0.6) return '#1976d2';
-  if (score >= 0.4) return '#ed6c02';
+  if (score >= 0.8) return '#5ba532';
+  if (score >= 0.6) return '#1565a0';
+  if (score >= 0.4) return '#e88a1a';
   return '#d32f2f';
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 0.8) return 'UTMÄRKT';
+  if (score >= 0.6) return 'BRA';
+  if (score >= 0.4) return 'GODKÄND';
+  return 'LÅG';
 }

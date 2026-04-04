@@ -128,6 +128,12 @@ public sealed class JobsGrpcService(
             msg.ExperienceYearsMax = job.ExperienceYearsMax.Value;
         if (job.PostedAt.HasValue)
             msg.PostedAt = Timestamp.FromDateTime(DateTime.SpecifyKind(job.PostedAt.Value, DateTimeKind.Utc));
+        if (job.Latitude.HasValue)
+            msg.Latitude = job.Latitude.Value;
+        if (job.Longitude.HasValue)
+            msg.Longitude = job.Longitude.Value;
+        if (job.LocalityId.HasValue)
+            msg.LocalityId = job.LocalityId.Value;
 
         foreach (var tag in job.Tags)
         {

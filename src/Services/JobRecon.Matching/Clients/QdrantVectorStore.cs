@@ -11,6 +11,8 @@ public sealed class QdrantVectorStore(
     ILogger<QdrantVectorStore> logger) : IVectorStore
 {
     private const string CollectionName = "job_embeddings";
+    private const string GeoFieldName = "location";
+    private const int PayloadBatchSize = 500;
     private readonly QdrantSettings _settings = options.Value;
 
     public async Task EnsureCollectionAsync(CancellationToken ct = default)
@@ -19,7 +21,10 @@ public sealed class QdrantVectorStore(
         {
             var collections = await client.ListCollectionsAsync(ct);
             if (collections.Any(c => c == CollectionName))
+            {
+                await EnsureGeoIndexAsync(ct);
                 return;
+            }
 
             await client.CreateCollectionAsync(
                 CollectionName,
@@ -32,6 +37,8 @@ public sealed class QdrantVectorStore(
 
             logger.LogInformation("Created Qdrant collection {Collection} with vector size {Size}",
                 CollectionName, _settings.VectorSize);
+
+            await EnsureGeoIndexAsync(ct);
         }
         catch (Exception ex)
         {
@@ -40,7 +47,7 @@ public sealed class QdrantVectorStore(
         }
     }
 
-    public async Task UpsertAsync(Guid jobId, float[] embedding, CancellationToken ct = default)
+    public async Task UpsertAsync(Guid jobId, float[] embedding, GeoPayload? geoPayload = null, CancellationToken ct = default)
     {
         var point = new PointStruct
         {
@@ -48,17 +55,37 @@ public sealed class QdrantVectorStore(
             Vectors = embedding
         };
 
+        if (geoPayload is not null)
+        {
+            point.Payload[GeoFieldName] = BuildGeoPointValue(geoPayload);
+        }
+
         await client.UpsertAsync(CollectionName, [point], cancellationToken: ct);
     }
 
     public async Task<List<VectorSearchResult>> SearchAsync(
-        float[] queryVector, int limit, CancellationToken ct = default)
+        float[] queryVector, int limit, IReadOnlyList<GeoCircle>? geoFilter = null, CancellationToken ct = default)
     {
         try
         {
+            Filter? filter = null;
+            if (geoFilter is { Count: > 0 })
+            {
+                filter = new Filter();
+                foreach (var circle in geoFilter)
+                {
+                    filter.Should.Add(Conditions.GeoRadius(
+                        GeoFieldName,
+                        circle.Latitude,
+                        circle.Longitude,
+                        (float)(circle.RadiusKm * 1000))); // Qdrant expects meters
+                }
+            }
+
             var results = await client.SearchAsync(
                 CollectionName,
                 queryVector,
+                filter: filter,
                 limit: (ulong)limit,
                 cancellationToken: ct);
 
@@ -73,6 +100,34 @@ public sealed class QdrantVectorStore(
         {
             logger.LogWarning(ex, "Vector search failed, returning empty results");
             return [];
+        }
+    }
+
+    public async Task SetGeoPayloadBatchAsync(
+        IReadOnlyList<(Guid JobId, GeoPayload Payload)> items, CancellationToken ct = default)
+    {
+        for (var i = 0; i < items.Count; i += PayloadBatchSize)
+        {
+            var batch = items.Skip(i).Take(PayloadBatchSize).ToList();
+            var guids = batch.Select(b => b.JobId).ToList();
+
+            // All items in a batch get their own payload, but SetPayloadAsync applies the same payload to all IDs.
+            // Group by unique lat/lng is impractical, so we process one at a time for correctness.
+            // However, most jobs in a batch will have different coords, so use individual updates.
+            foreach (var (jobId, payload) in batch)
+            {
+                var payloadDict = new Dictionary<string, Value>
+                {
+                    [GeoFieldName] = BuildGeoPointValue(payload)
+                };
+
+                await client.SetPayloadAsync(CollectionName, payloadDict, jobId, cancellationToken: ct);
+            }
+
+            if (i + PayloadBatchSize < items.Count)
+            {
+                logger.LogDebug("Geo payload backfill progress: {Done}/{Total}", i + batch.Count, items.Count);
+            }
         }
     }
 
@@ -118,5 +173,39 @@ public sealed class QdrantVectorStore(
             logger.LogWarning(ex, "Failed to batch check existing vectors, returning empty set");
             return [];
         }
+    }
+
+    private async Task EnsureGeoIndexAsync(CancellationToken ct)
+    {
+        try
+        {
+            await client.CreatePayloadIndexAsync(
+                CollectionName,
+                GeoFieldName,
+                PayloadSchemaType.Geo,
+                cancellationToken: ct);
+
+            logger.LogInformation("Ensured geo payload index on {Field}", GeoFieldName);
+        }
+        catch (Exception ex)
+        {
+            // Index may already exist — this is expected
+            logger.LogDebug(ex, "Geo index creation returned error (may already exist)");
+        }
+    }
+
+    private static Value BuildGeoPointValue(GeoPayload geo)
+    {
+        return new Value
+        {
+            StructValue = new Struct
+            {
+                Fields =
+                {
+                    ["lon"] = new Value { DoubleValue = geo.Longitude },
+                    ["lat"] = new Value { DoubleValue = geo.Latitude }
+                }
+            }
+        };
     }
 }

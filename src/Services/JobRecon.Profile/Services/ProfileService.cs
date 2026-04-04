@@ -30,6 +30,7 @@ public sealed class ProfileService : IProfileService
             .Include(p => p.DesiredJobTitles)
             .Include(p => p.Skills)
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .Include(p => p.CVDocuments)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
@@ -101,6 +102,7 @@ public sealed class ProfileService : IProfileService
             .Include(p => p.DesiredJobTitles)
             .Include(p => p.Skills)
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .Include(p => p.CVDocuments)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
@@ -226,6 +228,7 @@ public sealed class ProfileService : IProfileService
     {
         var profile = await _dbContext.UserProfiles
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
@@ -249,6 +252,7 @@ public sealed class ProfileService : IProfileService
     {
         var profile = await _dbContext.UserProfiles
             .Include(p => p.JobPreference)
+                .ThenInclude(jp => jp!.PreferredLocations)
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
         if (profile is null)
@@ -256,21 +260,21 @@ public sealed class ProfileService : IProfileService
             return Result.Failure<JobPreferenceResponse>(Error.NotFound("Profile.NotFound", "Profile not found"));
         }
 
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
         if (profile.JobPreference is null)
         {
-            var newPreference = new JobPreference
+            profile.JobPreference = new JobPreference
             {
                 Id = Guid.NewGuid(),
                 UserProfileId = profile.Id
             };
-            _dbContext.JobPreferences.Add(newPreference);
-            profile.JobPreference = newPreference;
+            _dbContext.JobPreferences.Add(profile.JobPreference);
         }
 
         var pref = profile.JobPreference;
         pref.MinSalary = request.MinSalary;
         pref.MaxSalary = request.MaxSalary;
-        pref.PreferredLocations = request.PreferredLocations;
         pref.IsRemotePreferred = request.IsRemotePreferred;
         pref.IsHybridAccepted = request.IsHybridAccepted;
         pref.IsOnSiteAccepted = request.IsOnSiteAccepted;
@@ -281,9 +285,30 @@ public sealed class ProfileService : IProfileService
         pref.AvailableFrom = request.AvailableFrom;
         pref.NoticePeriodDays = request.NoticePeriodDays;
 
+        _dbContext.PreferredLocations.RemoveRange(pref.PreferredLocations);
+        pref.PreferredLocations.Clear();
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        if (request.PreferredLocations is not null)
+        {
+            foreach (var loc in request.PreferredLocations)
+            {
+                pref.PreferredLocations.Add(new PreferredLocation
+                {
+                    JobPreferenceId = pref.Id,
+                    LocalityId = loc.LocalityId,
+                    Name = loc.Name,
+                    Latitude = loc.Latitude,
+                    Longitude = loc.Longitude,
+                    MaxDistanceKm = loc.MaxDistanceKm
+                });
+            }
+        }
+
         profile.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         _logger.LogInformation("Updated job preferences for user {UserId}", userId);
 
@@ -489,7 +514,8 @@ public sealed class ProfileService : IProfileService
             Id = pref.Id,
             MinSalary = pref.MinSalary,
             MaxSalary = pref.MaxSalary,
-            PreferredLocations = pref.PreferredLocations,
+            PreferredLocations = pref.PreferredLocations.Select(l => new PreferredLocationResponse(
+                l.Id, l.LocalityId, l.Name, l.Latitude, l.Longitude, l.MaxDistanceKm)).ToList(),
             IsRemotePreferred = pref.IsRemotePreferred,
             IsHybridAccepted = pref.IsHybridAccepted,
             IsOnSiteAccepted = pref.IsOnSiteAccepted,

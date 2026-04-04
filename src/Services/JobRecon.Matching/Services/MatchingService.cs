@@ -59,20 +59,22 @@ public sealed class MatchingService : IMatchingService
             return null;
         }
 
-        // Try vector-based pre-filtering first
-        var vectorScores = await GetVectorScoresAsync(profile, cancellationToken);
+        var pp = PreprocessedProfile.From(profile);
+
+        // Try vector-based pre-filtering first (with geo filter if user has preferred locations)
+        var geoFilter = BuildGeoFilter(pp.PreferredLocations);
+        var vectorScores = await GetVectorScoresAsync(profile, geoFilter, cancellationToken);
         var useVectorScoring = vectorScores.Count > 0;
 
         if (useVectorScoring)
         {
-            _logger.LogInformation("Using vector + heuristic matching ({VectorCount} candidates)", vectorScores.Count);
+            _logger.LogInformation("Using vector + heuristic matching ({VectorCount} candidates, geo={GeoFilter})",
+                vectorScores.Count, geoFilter is not null);
         }
         else
         {
             _logger.LogInformation("Falling back to heuristic-only matching");
         }
-
-        var pp = PreprocessedProfile.From(profile);
 
         List<JobRecommendation> allRecommendations;
         int totalAnalyzed;
@@ -116,7 +118,7 @@ public sealed class MatchingService : IMatchingService
     }
 
     private async Task<Dictionary<Guid, float>> GetVectorScoresAsync(
-        ProfileDto profile, CancellationToken ct)
+        ProfileDto profile, IReadOnlyList<GeoCircle>? geoFilter, CancellationToken ct)
     {
         try
         {
@@ -125,7 +127,7 @@ public sealed class MatchingService : IMatchingService
             if (profileEmbedding is null)
                 return new Dictionary<Guid, float>();
 
-            var results = await _vectorStore.SearchAsync(profileEmbedding, VectorTopK, ct);
+            var results = await _vectorStore.SearchAsync(profileEmbedding, VectorTopK, geoFilter, ct);
             return results.ToDictionary(r => r.JobId, r => r.Score);
         }
         catch (Exception ex)
@@ -133,6 +135,18 @@ public sealed class MatchingService : IMatchingService
             _logger.LogWarning(ex, "Vector search failed, will use heuristic-only matching");
             return new Dictionary<Guid, float>();
         }
+    }
+
+    private static IReadOnlyList<GeoCircle>? BuildGeoFilter(IReadOnlyList<PreferredLocationDto> locations)
+    {
+        if (locations.Count == 0)
+            return null;
+
+        return locations.Select(loc => new GeoCircle(
+            loc.Latitude,
+            loc.Longitude,
+            loc.MaxDistanceKm ?? 5 // 5km for exact-match mode
+        )).ToList();
     }
 
     private async Task<(List<JobRecommendation> Recommendations, int TotalAnalyzed)> MatchWithVectorPreFilterAsync(
@@ -253,8 +267,8 @@ public sealed class MatchingService : IMatchingService
         var pp = PreprocessedProfile.From(profile);
         var heuristicScore = CalculateHeuristicScore(pp, job, out var factors);
 
-        // Try to get vector score for this specific job
-        var vectorScores = await GetVectorScoresAsync(profile, cancellationToken);
+        // Try to get vector score for this specific job (no geo filter for single-job scoring)
+        var vectorScores = await GetVectorScoresAsync(profile, null, cancellationToken);
         if (vectorScores.TryGetValue(jobId, out var vectorScore))
         {
             var blendedScore = (vectorScore * VectorWeight) + (heuristicScore * HeuristicWeight);
@@ -490,39 +504,74 @@ public sealed class MatchingService : IMatchingService
             }
         }
 
-        // Check preferred locations — applies regardless of whether job has a location
-        if (pp.PreferredLocationsLower.Count > 0)
+        // Geolocation-based matching
+        if (pp.PreferredLocations.Count > 0)
         {
-            if (string.IsNullOrEmpty(job.Location))
+            if (!job.Latitude.HasValue || !job.Longitude.HasValue)
             {
-                description = "Job has no location — cannot verify against preferred areas";
+                description = "Job has no coordinates — cannot verify against preferred areas";
                 return 0.3;
             }
 
-            var jobLocation = job.Location.ToLowerInvariant();
+            var bestScore = 0.0;
+            var bestDescription = "";
 
-            if (pp.PreferredLocationsLower.Any(pl => jobLocation.Contains(pl) || pl.Contains(jobLocation)))
+            foreach (var loc in pp.PreferredLocations)
             {
-                description = $"Location matches preference: {job.Location}";
-                return 0.9;
+                var distanceKm = GeoMath.HaversineDistanceKm(
+                    loc.Latitude, loc.Longitude,
+                    job.Latitude.Value, job.Longitude.Value);
+
+                if (loc.MaxDistanceKm.HasValue)
+                {
+                    var maxDist = loc.MaxDistanceKm.Value;
+
+                    if (distanceKm > maxDist)
+                        continue;
+
+                    // Linear decay: 1.0 at center, 0.3 at edge of radius
+                    var score = 1.0 - (distanceKm / maxDist) * 0.7;
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestDescription = $"{loc.Name}: {distanceKm:F0}km away (within {maxDist}km radius)";
+                    }
+                }
+                else
+                {
+                    // No max distance: exact locality match only
+                    if (job.LocalityId.HasValue && job.LocalityId.Value == loc.LocalityId)
+                    {
+                        bestScore = 1.0;
+                        bestDescription = $"Exact match: {loc.Name}";
+                        break;
+                    }
+
+                    // Same-city tolerance: very close match (< 5km)
+                    if (distanceKm < 5.0)
+                    {
+                        var score = 0.95;
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestDescription = $"Near {loc.Name}: {distanceKm:F1}km";
+                        }
+                    }
+                }
             }
 
-            description = $"Location ({job.Location}) outside preferred areas";
-            return 0.2;
-        }
-
-        // No preferred locations — use current location as a soft signal if available
-        if (pp.LocationLower is not null && !string.IsNullOrEmpty(job.Location))
-        {
-            var jobLocation = job.Location.ToLowerInvariant();
-            if (jobLocation.Contains(pp.LocationLower) || pp.LocationLower.Contains(jobLocation))
+            if (bestScore > 0)
             {
-                description = $"Near your location: {job.Location}";
-                return 0.8;
+                description = bestDescription;
+                return bestScore;
             }
+
+            description = $"Location ({job.Location}) outside all preferred areas";
+            return 0.0;
         }
 
-        description = "No location data to match on";
+        // No preferred locations set — neutral
+        description = "No location preference set";
         return 1.0;
     }
 
@@ -671,11 +720,47 @@ public sealed class MatchingService : IMatchingService
 
     private static bool IsExcluded(PreprocessedProfile pp, JobDto job)
     {
-        if (pp.ExcludedCompaniesLower.Count == 0)
-            return false;
+        if (pp.ExcludedCompaniesLower.Count > 0)
+        {
+            var companyName = job.Company.Name.ToLowerInvariant();
+            if (pp.ExcludedCompaniesLower.Any(e => companyName.Contains(e) || e.Contains(companyName)))
+                return true;
+        }
 
-        var companyName = job.Company.Name.ToLowerInvariant();
-        return pp.ExcludedCompaniesLower.Any(e => companyName.Contains(e) || e.Contains(companyName));
+        // Exclude jobs outside all preferred location areas
+        if (pp.PreferredLocations.Count > 0)
+        {
+            if (!job.Latitude.HasValue || !job.Longitude.HasValue)
+                return true;
+
+            foreach (var loc in pp.PreferredLocations)
+            {
+                if (loc.MaxDistanceKm.HasValue)
+                {
+                    var distance = GeoMath.HaversineDistanceKm(
+                        loc.Latitude, loc.Longitude,
+                        job.Latitude.Value, job.Longitude.Value);
+                    if (distance <= loc.MaxDistanceKm.Value)
+                        return false;
+                }
+                else
+                {
+                    // Exact match: same locality or within 5km
+                    if (job.LocalityId.HasValue && job.LocalityId.Value == loc.LocalityId)
+                        return false;
+
+                    var distance = GeoMath.HaversineDistanceKm(
+                        loc.Latitude, loc.Longitude,
+                        job.Latitude.Value, job.Longitude.Value);
+                    if (distance < 5.0)
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     private static MatchingSummary BuildSummary(

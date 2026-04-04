@@ -6,7 +6,7 @@ public sealed class JobPreference
     public Guid UserProfileId { get; set; }
     public int? MinSalary { get; set; }
     public int? MaxSalary { get; set; }
-    public string? PreferredLocations { get; set; }
+    public ICollection<PreferredLocation> PreferredLocations { get; set; } = [];
     public bool IsRemotePreferred { get; set; }
     public bool IsHybridAccepted { get; set; }
     public bool IsOnSiteAccepted { get; set; }

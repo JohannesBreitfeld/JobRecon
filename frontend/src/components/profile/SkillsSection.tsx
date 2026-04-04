@@ -101,8 +101,7 @@ export function SkillsSection() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Kompetenser</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
         <Button
           variant="outlined"
           startIcon={<AddIcon />}

@@ -10,11 +10,28 @@ export interface SkillResponse {
   yearsOfExperience?: number;
 }
 
+export interface PreferredLocationResponse {
+  id: string;
+  localityId: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  maxDistanceKm?: number;
+}
+
+export interface PreferredLocationRequest {
+  localityId: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  maxDistanceKm?: number;
+}
+
 export interface JobPreferenceResponse {
   id: string;
   minSalary?: number;
   maxSalary?: number;
-  preferredLocations?: string;
+  preferredLocations: PreferredLocationResponse[];
   isRemotePreferred: boolean;
   isHybridAccepted: boolean;
   isOnSiteAccepted: boolean;
@@ -88,7 +105,7 @@ export interface AddSkillRequest {
 export interface UpdateJobPreferenceRequest {
   minSalary?: number;
   maxSalary?: number;
-  preferredLocations?: string;
+  preferredLocations: PreferredLocationRequest[];
   isRemotePreferred: boolean;
   isHybridAccepted: boolean;
   isOnSiteAccepted: boolean;

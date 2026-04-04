@@ -1,6 +1,7 @@
 using JobRecon.Jobs.Endpoints;
 using JobRecon.Jobs.Extensions;
 using JobRecon.Jobs.Grpc;
+using JobRecon.Jobs.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,7 @@ var app = builder.Build();
 app.ConfigurePipeline();
 app.MapJobEndpoints();
 app.MapJobSourceEndpoints();
+app.MapLocalityEndpoints();
 app.MapGrpcService<JobsGrpcService>();
 
 await app.MigrateDatabaseAsync();

@@ -98,6 +98,15 @@ export interface SavedJobResponse {
   job: JobListResponse;
 }
 
+export interface LocalityResponse {
+  geoNameId: number;
+  name: string;
+  asciiName: string;
+  latitude: number;
+  longitude: number;
+  population: number;
+}
+
 export interface JobStatisticsResponse {
   totalJobs: number;
   activeJobs: number;
@@ -189,5 +198,12 @@ export const jobsApi = {
     if (search) params.append('search', search);
     params.append('limit', limit.toString());
     return apiClient.get(`/api/jobs/tags?${params.toString()}`);
+  },
+
+  searchLocalities: (query: string, limit: number = 20): Promise<LocalityResponse[]> => {
+    const params = new URLSearchParams();
+    params.append('q', query);
+    params.append('limit', limit.toString());
+    return apiClient.get(`/api/localities/search?${params.toString()}`);
   },
 };

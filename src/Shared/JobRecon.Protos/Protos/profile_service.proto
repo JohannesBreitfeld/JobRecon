@@ -37,7 +37,7 @@ message DesiredJobTitleMessage {
 message JobPreferenceMessage {
   optional double min_salary = 1;
   optional double max_salary = 2;
-  optional string preferred_locations = 3;
+  repeated PreferredLocationMessage preferred_locations = 3;
   bool is_remote_preferred = 4;
   bool is_hybrid_accepted = 5;
   bool is_on_site_accepted = 6;
@@ -45,5 +45,13 @@ message JobPreferenceMessage {
   optional string preferred_industries = 8;
   optional string excluded_companies = 9;
   bool is_actively_looking = 10;
+}
+
+message PreferredLocationMessage {
+  int32 locality_id = 1;
+  string name = 2;
+  double latitude = 3;
+  double longitude = 4;
+  optional int32 max_distance_km = 5;
 }
 

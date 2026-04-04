@@ -14,8 +14,10 @@ import {
   LocationOn as LocationIcon,
   AccessTime as TimeIcon,
   Work as WorkIcon,
+  Lock as LockIcon,
 } from '@mui/icons-material';
 import { useSaveJob, useRemoveSavedJob } from '../../api/hooks/useJobs';
+import { useAuthStore } from '../../stores/authStore';
 import type { JobListResponse, WorkLocationType, EmploymentType, SavedJobStatus } from '../../api/jobs';
 
 const workLocationLabels: Record<WorkLocationType, string> = {
@@ -59,6 +61,7 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, onClick }: JobCardProps) {
+  const { isAuthenticated } = useAuthStore();
   const saveJobMutation = useSaveJob();
   const removeSavedJobMutation = useRemoveSavedJob();
   const isLoading = saveJobMutation.isPending || removeSavedJobMutation.isPending;
@@ -100,7 +103,19 @@ export function JobCard({ job, onClick }: JobCardProps) {
   const salary = formatSalary();
 
   return (
-    <Card variant="outlined" sx={{ height: '100%' }}>
+    <Card
+      variant="outlined"
+      sx={{
+        height: '100%',
+        borderLeft: 3,
+        borderLeftColor: 'secondary.main',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+        },
+      }}
+    >
       <CardActionArea onClick={onClick} sx={{ height: '100%' }}>
         <CardContent>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
@@ -130,7 +145,7 @@ export function JobCard({ job, onClick }: JobCardProps) {
                 </Box>
               )}
               <Box>
-                <Typography variant="subtitle1" fontWeight="medium" sx={{ lineHeight: 1.2 }}>
+                <Typography variant="subtitle1" fontWeight={600} sx={{ lineHeight: 1.2 }}>
                   {job.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -201,6 +216,15 @@ export function JobCard({ job, onClick }: JobCardProps) {
                   label={savedStatusLabels[job.savedStatus]}
                   size="small"
                   color={savedStatusColors[job.savedStatus]}
+                />
+              )}
+              {!isAuthenticated && (
+                <Chip
+                  icon={<LockIcon sx={{ fontSize: 14 }} />}
+                  label="Logga in för matchscore"
+                  size="small"
+                  variant="outlined"
+                  color="primary"
                 />
               )}
             </Box>

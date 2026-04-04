@@ -15,6 +15,7 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
+  alpha,
 } from '@mui/material';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { authApi } from '../api/auth';
@@ -74,120 +75,147 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          mt: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Återställ lösenord
-          </Typography>
-
-          {success ? (
-            <>
-              <Alert severity="success" sx={{ mb: 2 }}>
-                Ditt lösenord har återställts.
-              </Alert>
-              <Box sx={{ textAlign: 'center' }}>
-                <Link component={RouterLink} to="/login">
-                  Logga in med ditt nya lösenord
-                </Link>
-              </Box>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
-                Ange ditt nya lösenord nedan.
+    <Box
+      sx={{
+        minHeight: 'calc(100vh - 64px)',
+        display: 'flex',
+        alignItems: 'center',
+        py: 4,
+        background: (theme) =>
+          `linear-gradient(160deg, ${alpha(theme.palette.primary.dark, 0.03)} 0%, ${alpha(theme.palette.secondary.main, 0.04)} 100%)`,
+      }}
+    >
+      <Container maxWidth="sm">
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 3, sm: 5 },
+              width: '100%',
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+              <Box
+                component="img"
+                src="/images/logo-web.png"
+                alt="JobRecon"
+                sx={{ height: 40, mb: 2 }}
+              />
+              <Typography component="h1" variant="h4" gutterBottom>
+                Återställ lösenord
               </Typography>
+            </Box>
 
-              <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-                {error && (
-                  <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-                    {error}
-                  </Alert>
-                )}
+            {success ? (
+              <>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  Ditt lösenord har återställts.
+                </Alert>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Link component={RouterLink} to="/login">
+                    Logga in med ditt nya lösenord
+                  </Link>
+                </Box>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+                  Ange ditt nya lösenord nedan.
+                </Typography>
 
-                <TextField
-                  {...register('email')}
-                  label="E-post"
-                  type="email"
-                  fullWidth
-                  autoComplete="email"
-                  error={!!errors.email}
-                  helperText={errors.email?.message}
-                  sx={{ mb: 2 }}
-                />
+                <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+                  {error && (
+                    <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                      {error}
+                    </Alert>
+                  )}
 
-                <TextField
-                  {...register('token')}
-                  label="Återställningstoken"
-                  fullWidth
-                  error={!!errors.token}
-                  helperText={errors.token?.message}
-                  sx={{ mb: 2 }}
-                />
+                  <TextField
+                    {...register('email')}
+                    label="E-post"
+                    type="email"
+                    fullWidth
+                    autoComplete="email"
+                    error={!!errors.email}
+                    helperText={errors.email?.message}
+                    sx={{ mb: 2 }}
+                  />
 
-                <TextField
-                  {...register('newPassword')}
-                  label="Nytt lösenord"
-                  type={showPassword ? 'text' : 'password'}
-                  fullWidth
-                  autoComplete="new-password"
-                  error={!!errors.newPassword}
-                  helperText={errors.newPassword?.message}
-                  sx={{ mb: 2 }}
-                  slotProps={{
-                    input: {
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            onClick={() => setShowPassword(!showPassword)}
-                            edge="end"
-                          >
-                            {showPassword ? <VisibilityOff /> : <Visibility />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                />
+                  <TextField
+                    {...register('token')}
+                    label="Återställningstoken"
+                    fullWidth
+                    error={!!errors.token}
+                    helperText={errors.token?.message}
+                    sx={{ mb: 2 }}
+                  />
 
-                <TextField
-                  {...register('confirmPassword')}
-                  label="Bekräfta lösenord"
-                  type={showPassword ? 'text' : 'password'}
-                  fullWidth
-                  autoComplete="new-password"
-                  error={!!errors.confirmPassword}
-                  helperText={errors.confirmPassword?.message}
-                  sx={{ mb: 3 }}
-                />
+                  <TextField
+                    {...register('newPassword')}
+                    label="Nytt lösenord"
+                    type={showPassword ? 'text' : 'password'}
+                    fullWidth
+                    autoComplete="new-password"
+                    error={!!errors.newPassword}
+                    helperText={errors.newPassword?.message}
+                    sx={{ mb: 2 }}
+                    slotProps={{
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              onClick={() => setShowPassword(!showPassword)}
+                              edge="end"
+                            >
+                              {showPassword ? <VisibilityOff /> : <Visibility />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
+                  />
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  disabled={isLoading}
-                >
-                  {isLoading ? <CircularProgress size={24} /> : 'Återställ lösenord'}
-                </Button>
-              </Box>
+                  <TextField
+                    {...register('confirmPassword')}
+                    label="Bekräfta lösenord"
+                    type={showPassword ? 'text' : 'password'}
+                    fullWidth
+                    autoComplete="new-password"
+                    error={!!errors.confirmPassword}
+                    helperText={errors.confirmPassword?.message}
+                    sx={{ mb: 3 }}
+                  />
 
-              <Box sx={{ mt: 3, textAlign: 'center' }}>
-                <Link component={RouterLink} to="/login">
-                  Tillbaka till inloggning
-                </Link>
-              </Box>
-            </>
-          )}
-        </Paper>
-      </Box>
-    </Container>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="secondary"
+                    fullWidth
+                    size="large"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? <CircularProgress size={24} /> : 'Återställ lösenord'}
+                  </Button>
+                </Box>
+
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Link component={RouterLink} to="/login">
+                    Tillbaka till inloggning
+                  </Link>
+                </Box>
+              </>
+            )}
+          </Paper>
+        </Box>
+      </Container>
+    </Box>
   );
 }

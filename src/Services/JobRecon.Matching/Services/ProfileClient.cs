@@ -52,7 +52,12 @@ public sealed class ProfileClient(
         return new JobPreferenceDto(
             pref.HasMinSalary ? (decimal)pref.MinSalary : null,
             pref.HasMaxSalary ? (decimal)pref.MaxSalary : null,
-            pref.HasPreferredLocations ? pref.PreferredLocations : null,
+            pref.PreferredLocations.Select(l => new PreferredLocationDto(
+                l.LocalityId,
+                l.Name,
+                l.Latitude,
+                l.Longitude,
+                l.HasMaxDistanceKm ? l.MaxDistanceKm : null)).ToList(),
             pref.IsRemotePreferred,
             pref.IsHybridAccepted,
             pref.IsOnSiteAccepted,

@@ -14,6 +14,9 @@ public sealed class JobEmbeddingWorker(
 
         logger.LogInformation("Job embedding worker started");
 
+        // One-time geo payload backfill for existing embeddings
+        await RunGeoBackfillAsync(stoppingToken);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -28,6 +31,24 @@ public sealed class JobEmbeddingWorker(
             }
 
             await Task.Delay(Interval, stoppingToken);
+        }
+    }
+
+    private async Task RunGeoBackfillAsync(CancellationToken ct)
+    {
+        try
+        {
+            logger.LogInformation("Starting geo payload backfill for existing embeddings");
+
+            using var scope = scopeFactory.CreateScope();
+            var embeddingService = scope.ServiceProvider.GetRequiredService<IJobEmbeddingService>();
+            var count = await embeddingService.BackfillGeoPayloadAsync(ct);
+
+            logger.LogInformation("Geo payload backfill complete: {Count} points updated", count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Geo payload backfill failed, will retry on next restart");
         }
     }
 }

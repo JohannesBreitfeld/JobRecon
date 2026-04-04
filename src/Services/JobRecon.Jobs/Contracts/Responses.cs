@@ -92,6 +92,14 @@ public sealed class JobSearchResponse
     public int TotalPages { get; set; }
 }
 
+public sealed record LocalityResponse(
+    int GeoNameId,
+    string Name,
+    string AsciiName,
+    double Latitude,
+    double Longitude,
+    int Population);
+
 public sealed class JobStatisticsResponse
 {
     public int TotalJobs { get; set; }

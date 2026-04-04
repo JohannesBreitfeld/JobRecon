@@ -13,6 +13,7 @@ import {
   Button,
   Alert,
   CircularProgress,
+  alpha,
 } from '@mui/material';
 import { authApi } from '../api/auth';
 
@@ -49,76 +50,102 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          mt: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Glömt lösenord
-          </Typography>
-
-          {submitted ? (
-            <>
-              <Alert severity="success" sx={{ mb: 2 }}>
-                Om ett konto med den e-postadressen finns har vi skickat instruktioner för att återställa ditt lösenord.
-              </Alert>
-              <Box sx={{ textAlign: 'center' }}>
-                <Link component={RouterLink} to="/login">
-                  Tillbaka till inloggning
-                </Link>
-              </Box>
-            </>
-          ) : (
-            <>
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
-                Ange din e-postadress så skickar vi en länk för att återställa ditt lösenord.
+    <Box
+      sx={{
+        minHeight: 'calc(100vh - 64px)',
+        display: 'flex',
+        alignItems: 'center',
+        background: (theme) =>
+          `linear-gradient(160deg, ${alpha(theme.palette.primary.dark, 0.03)} 0%, ${alpha(theme.palette.secondary.main, 0.04)} 100%)`,
+      }}
+    >
+      <Container maxWidth="sm">
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 3, sm: 5 },
+              width: '100%',
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+              <Box
+                component="img"
+                src="/images/logo-web.png"
+                alt="JobRecon"
+                sx={{ height: 40, mb: 2 }}
+              />
+              <Typography component="h1" variant="h4" gutterBottom>
+                Glömt lösenord
               </Typography>
+            </Box>
 
-              <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
-                {error && (
-                  <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-                    {error}
-                  </Alert>
-                )}
+            {submitted ? (
+              <>
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  Om ett konto med den e-postadressen finns har vi skickat instruktioner för att återställa ditt lösenord.
+                </Alert>
+                <Box sx={{ textAlign: 'center' }}>
+                  <Link component={RouterLink} to="/login">
+                    Tillbaka till inloggning
+                  </Link>
+                </Box>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+                  Ange din e-postadress så skickar vi en länk för att återställa ditt lösenord.
+                </Typography>
 
-                <TextField
-                  {...register('email')}
-                  label="E-post"
-                  type="email"
-                  fullWidth
-                  autoComplete="email"
-                  autoFocus
-                  error={!!errors.email}
-                  helperText={errors.email?.message}
-                  sx={{ mb: 3 }}
-                />
+                <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate>
+                  {error && (
+                    <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+                      {error}
+                    </Alert>
+                  )}
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  size="large"
-                  disabled={isLoading}
-                >
-                  {isLoading ? <CircularProgress size={24} /> : 'Skicka återställningslänk'}
-                </Button>
-              </Box>
+                  <TextField
+                    {...register('email')}
+                    label="E-post"
+                    type="email"
+                    fullWidth
+                    autoComplete="email"
+                    autoFocus
+                    error={!!errors.email}
+                    helperText={errors.email?.message}
+                    sx={{ mb: 3 }}
+                  />
 
-              <Box sx={{ mt: 3, textAlign: 'center' }}>
-                <Link component={RouterLink} to="/login">
-                  Tillbaka till inloggning
-                </Link>
-              </Box>
-            </>
-          )}
-        </Paper>
-      </Box>
-    </Container>
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="secondary"
+                    fullWidth
+                    size="large"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? <CircularProgress size={24} /> : 'Skicka återställningslänk'}
+                  </Button>
+                </Box>
+
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Link component={RouterLink} to="/login">
+                    Tillbaka till inloggning
+                  </Link>
+                </Box>
+              </>
+            )}
+          </Paper>
+        </Box>
+      </Container>
+    </Box>
   );
 }

@@ -18,7 +18,7 @@ namespace JobRecon.Profile.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("profile")
-                .HasAnnotation("ProductVersion", "10.0.2")
+                .HasAnnotation("ProductVersion", "10.0.5")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -140,10 +140,6 @@ namespace JobRecon.Profile.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<string>("PreferredLocations")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -156,6 +152,42 @@ namespace JobRecon.Profile.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("JobPreferences", "profile");
+                });
+
+            modelBuilder.Entity("JobRecon.Profile.Domain.PreferredLocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("JobPreferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("LocalityId")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("MaxDistanceKm")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobPreferenceId", "LocalityId")
+                        .IsUnique();
+
+                    b.ToTable("PreferredLocations", "profile");
                 });
 
             modelBuilder.Entity("JobRecon.Profile.Domain.Skill", b =>
@@ -278,6 +310,17 @@ namespace JobRecon.Profile.Infrastructure.Migrations
                     b.Navigation("UserProfile");
                 });
 
+            modelBuilder.Entity("JobRecon.Profile.Domain.PreferredLocation", b =>
+                {
+                    b.HasOne("JobRecon.Profile.Domain.JobPreference", "JobPreference")
+                        .WithMany("PreferredLocations")
+                        .HasForeignKey("JobPreferenceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("JobPreference");
+                });
+
             modelBuilder.Entity("JobRecon.Profile.Domain.Skill", b =>
                 {
                     b.HasOne("JobRecon.Profile.Domain.UserProfile", "UserProfile")
@@ -287,6 +330,11 @@ namespace JobRecon.Profile.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("UserProfile");
+                });
+
+            modelBuilder.Entity("JobRecon.Profile.Domain.JobPreference", b =>
+                {
+                    b.Navigation("PreferredLocations");
                 });
 
             modelBuilder.Entity("JobRecon.Profile.Domain.UserProfile", b =>

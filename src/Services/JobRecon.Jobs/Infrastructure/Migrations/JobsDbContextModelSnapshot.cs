@@ -136,9 +136,20 @@ namespace JobRecon.Jobs.Infrastructure.Migrations
                     b.Property<Guid>("JobSourceId")
                         .HasColumnType("uuid");
 
+                    b.Property<double?>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("LocalityId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Location")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<double?>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("double precision");
 
                     b.Property<string>("NormalizedDescription")
                         .HasMaxLength(50000)
@@ -199,6 +210,8 @@ namespace JobRecon.Jobs.Infrastructure.Migrations
                     b.HasIndex("Hash");
 
                     b.HasIndex("IsEnriched");
+
+                    b.HasIndex("LocalityId");
 
                     b.HasIndex("Location");
 
@@ -316,6 +329,52 @@ namespace JobRecon.Jobs.Infrastructure.Migrations
                     b.ToTable("JobTags", "jobs");
                 });
 
+            modelBuilder.Entity("JobRecon.Jobs.Domain.Locality", b =>
+                {
+                    b.Property<int>("GeoNameId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Admin2Code")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("AlternateNames")
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)");
+
+                    b.Property<string>("AsciiName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("FeatureCode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Population")
+                        .HasColumnType("integer");
+
+                    b.HasKey("GeoNameId");
+
+                    b.HasIndex("AsciiName");
+
+                    b.HasIndex("Population");
+
+                    b.ToTable("Localities", "jobs");
+                });
+
             modelBuilder.Entity("JobRecon.Jobs.Domain.SavedJob", b =>
                 {
                     b.Property<Guid>("Id")
@@ -373,6 +432,11 @@ namespace JobRecon.Jobs.Infrastructure.Migrations
                         .HasForeignKey("JobSourceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("JobRecon.Jobs.Domain.Locality", null)
+                        .WithMany()
+                        .HasForeignKey("LocalityId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Company");
 
