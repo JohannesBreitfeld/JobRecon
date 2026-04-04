@@ -260,15 +260,16 @@ public sealed class ProfileService : IProfileService
             return Result.Failure<JobPreferenceResponse>(Error.NotFound("Profile.NotFound", "Profile not found"));
         }
 
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
         if (profile.JobPreference is null)
         {
-            var newPreference = new JobPreference
+            profile.JobPreference = new JobPreference
             {
                 Id = Guid.NewGuid(),
                 UserProfileId = profile.Id
             };
-            _dbContext.JobPreferences.Add(newPreference);
-            profile.JobPreference = newPreference;
+            _dbContext.JobPreferences.Add(profile.JobPreference);
         }
 
         var pref = profile.JobPreference;
@@ -284,15 +285,16 @@ public sealed class ProfileService : IProfileService
         pref.AvailableFrom = request.AvailableFrom;
         pref.NoticePeriodDays = request.NoticePeriodDays;
 
-        // Replace preferred locations
+        _dbContext.PreferredLocations.RemoveRange(pref.PreferredLocations);
         pref.PreferredLocations.Clear();
-        if (request.PreferredLocations is { Count: > 0 })
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        if (request.PreferredLocations is not null)
         {
             foreach (var loc in request.PreferredLocations)
             {
                 pref.PreferredLocations.Add(new PreferredLocation
                 {
-                    Id = Guid.NewGuid(),
                     JobPreferenceId = pref.Id,
                     LocalityId = loc.LocalityId,
                     Name = loc.Name,
@@ -306,6 +308,7 @@ public sealed class ProfileService : IProfileService
         profile.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         _logger.LogInformation("Updated job preferences for user {UserId}", userId);
 

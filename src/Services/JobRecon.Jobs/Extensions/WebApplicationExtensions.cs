@@ -79,7 +79,7 @@ public static class WebApplicationExtensions
         // Backfill geocoding for existing jobs (one-time, then self-disabling)
         RecurringJob.AddOrUpdate<IGeocodingBackfillService>(
             "backfill-geocoding",
-            service => service.BackfillAsync(100, CancellationToken.None),
+            service => service.BackfillAsync(5000, CancellationToken.None),
             "*/10 * * * *"); // Every 10 minutes until all jobs are geocoded
     }
 }

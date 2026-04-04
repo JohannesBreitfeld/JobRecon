@@ -13,13 +13,30 @@ public static class LocalityEndpoints
         group.MapGet("/search", SearchLocalities)
             .WithName("SearchLocalities")
             .WithSummary("Search localities for autocomplete");
+
+        group.MapPost("/backfill-geocoding", TriggerGeocodingBackfill)
+            .WithName("TriggerGeocodingBackfill")
+            .WithSummary("Trigger geocoding backfill for existing jobs")
+;
+    }
+
+    private static async Task<IResult> TriggerGeocodingBackfill(
+        IGeocodingBackfillService backfillService,
+        CancellationToken ct,
+        [FromQuery] int batchSize = 5000)
+    {
+        if (batchSize <= 0) batchSize = 5000;
+        if (batchSize > 50000) batchSize = 50000;
+
+        var geocoded = await backfillService.BackfillAsync(batchSize, ct);
+        return Results.Ok(new { geocoded, batchSize });
     }
 
     private static async Task<IResult> SearchLocalities(
-        [FromQuery(Name = "q")] string? query,
-        [FromQuery] int limit,
         ILocalityService localityService,
-        CancellationToken ct)
+        CancellationToken ct,
+        [FromQuery(Name = "q")] string? query = null,
+        [FromQuery] int limit = 20)
     {
         if (limit <= 0) limit = 20;
         if (limit > 100) limit = 100;
