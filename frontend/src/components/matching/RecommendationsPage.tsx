@@ -4,25 +4,35 @@ import {
   Typography,
   Box,
   Alert,
+  Button,
   CircularProgress,
   Pagination,
   Paper,
   Slider,
   Chip,
+  alpha,
 } from '@mui/material';
 import {
   TrendingUp as TrendingUpIcon,
+  Analytics as AnalyticsIcon,
+  WorkOutline as WorkOutlineIcon,
+  Star as StarIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useMatchingStore } from '../../stores/matchingStore';
 import { useRecommendations } from '../../api/hooks/useMatching';
+import { ApiError } from '../../api/client';
 import { MatchCard } from './MatchCard';
 import { JobDetailsDialog } from '../jobs/JobDetailsDialog';
 
 export function RecommendationsPage() {
+  const navigate = useNavigate();
   const { params, setParams } = useMatchingStore();
   const { data: results, isLoading, error } = useRecommendations(params);
   const [minScoreFilter, setMinScoreFilter] = useState(params.minScore ?? 0.6);
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+
+  const profileNotFound = error instanceof ApiError && (error.code === 'Profile.NotFound' || error.status === 404);
 
   const handlePageChange = (_: React.ChangeEvent<unknown>, page: number) => {
     setParams({ page });
@@ -42,42 +52,115 @@ export function RecommendationsPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-        <TrendingUpIcon color="primary" />
-        <Typography variant="h4" component="h1">
-          Rekommendationer
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+          <TrendingUpIcon color="primary" />
+          <Typography variant="h4" component="h1">
+            Rekommendationer
+          </Typography>
+        </Box>
+        <Typography variant="body1" color="text.secondary">
+          Jobb som matchar din profil, rankade efter relevans.
         </Typography>
       </Box>
 
-      {error && (
+      {profileNotFound && (
+        <Paper elevation={0} sx={{ p: 5, textAlign: 'center', border: 1, borderColor: 'divider' }}>
+          <Box
+            component="img"
+            src="/images/logo.png"
+            alt="JobRecon"
+            sx={{ width: 100, height: 'auto', mb: 3, opacity: 0.7 }}
+          />
+          <Typography variant="h5" gutterBottom>
+            Skapa din profil för att se rekommendationer
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
+            Vi behöver veta lite om dig för att kunna matcha dig med rätt jobb.
+          </Typography>
+          <Button variant="contained" color="secondary" size="large" onClick={() => navigate('/profile')}>
+            Gå till profil
+          </Button>
+        </Paper>
+      )}
+
+      {error && !profileNotFound && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error instanceof Error ? error.message : 'Ett fel uppstod vid hämtning av rekommendationer'}
         </Alert>
       )}
 
       {results?.summary && (
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Analyserade jobb
-              </Typography>
-              <Typography variant="h6">{results.summary.totalJobsAnalyzed}</Typography>
+        <Paper elevation={0} sx={{ p: 3, mb: 3, border: 1, borderColor: 'divider' }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
+              gap: 3,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                  color: 'primary.main',
+                  display: 'flex',
+                }}
+              >
+                <AnalyticsIcon fontSize="small" />
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Analyserade jobb
+                </Typography>
+                <Typography variant="h6">{results.summary.totalJobsAnalyzed}</Typography>
+              </Box>
             </Box>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Matchande jobb
-              </Typography>
-              <Typography variant="h6">{results.summary.matchedJobs}</Typography>
+
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.08),
+                  color: 'secondary.main',
+                  display: 'flex',
+                }}
+              >
+                <WorkOutlineIcon fontSize="small" />
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Matchande jobb
+                </Typography>
+                <Typography variant="h6">{results.summary.matchedJobs}</Typography>
+              </Box>
             </Box>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Snittscore
-              </Typography>
-              <Typography variant="h6">
-                {Math.round(results.summary.averageScore * 100)}%
-              </Typography>
+
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+              <Box
+                sx={{
+                  p: 1,
+                  borderRadius: 2,
+                  bgcolor: (theme) => alpha(theme.palette.success.main, 0.08),
+                  color: 'success.main',
+                  display: 'flex',
+                }}
+              >
+                <StarIcon fontSize="small" />
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Snittscore
+                </Typography>
+                <Typography variant="h6">
+                  {Math.round(results.summary.averageScore * 100)}%
+                </Typography>
+              </Box>
             </Box>
+
             {results.summary.topMatchingSkills.length > 0 && (
               <Box>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
@@ -85,16 +168,23 @@ export function RecommendationsPage() {
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   {results.summary.topMatchingSkills.map((skill) => (
-                    <Chip key={skill} label={skill} size="small" color="primary" variant="outlined" />
+                    <Chip key={skill} label={skill} size="small" color="secondary" variant="outlined" />
                   ))}
                 </Box>
               </Box>
             )}
           </Box>
 
-          <Box sx={{ mt: 2, px: 1 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
+            Baserat på jobb från senaste 30 dagarna &middot; Uppdaterad {new Date().toLocaleDateString('sv-SE')}
+          </Typography>
+
+          <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Minsta matchscore: {Math.round(minScoreFilter * 100)}%
+              Minsta matchscore: <strong>{Math.round(minScoreFilter * 100)}%</strong>
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Dra reglaget för att filtrera bort jobb med lägre matchningsgrad.
             </Typography>
             <Slider
               value={minScoreFilter}
@@ -105,7 +195,12 @@ export function RecommendationsPage() {
               step={0.05}
               valueLabelDisplay="auto"
               valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
-              sx={{ maxWidth: 300 }}
+              marks={[
+                { value: 0, label: '0%' },
+                { value: 0.5, label: '50%' },
+                { value: 1, label: '100%' },
+              ]}
+              sx={{ maxWidth: 400, color: 'secondary.main' }}
             />
           </Box>
         </Paper>
@@ -118,7 +213,7 @@ export function RecommendationsPage() {
       )}
 
       {results && results.recommendations.length === 0 && !isLoading && (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
+        <Paper elevation={0} sx={{ p: 5, textAlign: 'center', border: 1, borderColor: 'divider' }}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
             Inga rekommendationer hittades
           </Typography>

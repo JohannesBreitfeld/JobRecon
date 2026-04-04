@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   TextField,
@@ -11,9 +11,11 @@ import {
   Collapse,
   InputAdornment,
   IconButton,
+  Autocomplete,
 } from '@mui/material';
 import { Search as SearchIcon, FilterList as FilterIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useJobsStore } from '../../stores/jobsStore';
+import { jobsApi } from '../../api/jobs';
 import type { WorkLocationType, EmploymentType } from '../../api/jobs';
 
 const workLocationLabels: Record<WorkLocationType, string> = {
@@ -36,6 +38,27 @@ export function JobSearchFilters() {
   const [showFilters, setShowFilters] = useState(false);
   const [localQuery, setLocalQuery] = useState(searchParams.query || '');
   const [localLocation, setLocalLocation] = useState(searchParams.location || '');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+  const fetchSuggestions = useCallback((input: string) => {
+    if (!input || input.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    setLoadingSuggestions(true);
+    jobsApi.getTags(input, 10).then((tags) => {
+      setSuggestions(tags);
+      setLoadingSuggestions(false);
+    }).catch(() => {
+      setLoadingSuggestions(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => fetchSuggestions(localQuery), 300);
+    return () => clearTimeout(timer);
+  }, [localQuery, fetchSuggestions]);
 
   const handleSearch = () => {
     setSearchParams({ query: localQuery, location: localLocation, page: 1 });
@@ -68,28 +91,57 @@ export function JobSearchFilters() {
     <Box sx={{ mb: 3 }}>
       <Grid container spacing={2} alignItems="center">
         <Grid size={{ xs: 12, md: 5 }}>
-          <TextField
-            fullWidth
-            placeholder="Sök jobb, företag eller kompetenser..."
-            value={localQuery}
-            onChange={(e) => setLocalQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-                endAdornment: localQuery && (
-                  <InputAdornment position="end">
-                    <IconButton size="small" onClick={() => setLocalQuery('')}>
-                      <ClearIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
+          <Autocomplete
+            freeSolo
+            options={suggestions}
+            loading={loadingSuggestions}
+            inputValue={localQuery}
+            onInputChange={(_, value, reason) => {
+              if (reason !== 'reset') setLocalQuery(value);
             }}
+            onChange={(_, value) => {
+              if (typeof value === 'string') {
+                setLocalQuery(value);
+                setSearchParams({ query: value, location: localLocation, page: 1 });
+              }
+            }}
+            filterOptions={(x) => x}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Sök jobb, företag eller kompetenser..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
+                slotProps={{
+                  input: {
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <InputAdornment position="start">
+                          <SearchIcon />
+                        </InputAdornment>
+                        {params.InputProps.startAdornment}
+                      </>
+                    ),
+                    endAdornment: (
+                      <>
+                        {localQuery && (
+                          <InputAdornment position="end">
+                            <IconButton size="small" onClick={() => setLocalQuery('')} aria-label="Rensa söktext">
+                              <ClearIcon fontSize="small" />
+                            </IconButton>
+                          </InputAdornment>
+                        )}
+                        {params.InputProps.endAdornment}
+                      </>
+                    ),
+                  },
+                }}
+              />
+            )}
           />
         </Grid>
 
@@ -107,6 +159,7 @@ export function JobSearchFilters() {
           <Button
             fullWidth
             variant="contained"
+            color="secondary"
             onClick={handleSearch}
             sx={{ height: 56 }}
           >

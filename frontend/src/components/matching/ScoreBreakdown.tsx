@@ -47,8 +47,8 @@ export function ScoreBreakdown({ factors }: ScoreBreakdownProps) {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 0.8) return '#2e7d32';
-  if (score >= 0.6) return '#1976d2';
-  if (score >= 0.4) return '#ed6c02';
+  if (score >= 0.8) return '#5ba532';
+  if (score >= 0.6) return '#1565a0';
+  if (score >= 0.4) return '#e88a1a';
   return '#d32f2f';
 }

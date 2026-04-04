@@ -18,6 +18,8 @@ import {
   Stack,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import Tooltip from '@mui/material/Tooltip';
 import { useProfile, useUpdatePreferences } from '../../api/hooks/useProfile';
 import { jobsApi, type LocalityResponse } from '../../api/jobs';
 import type {
@@ -40,45 +42,49 @@ export function PreferencesSection() {
 
   const isLoading = updatePreferencesMutation.isPending;
 
-  const [formData, setFormData] = useState<Omit<UpdateJobPreferenceRequest, 'preferredLocations'>>({
-    minSalary: undefined,
-    maxSalary: undefined,
-    isRemotePreferred: false,
-    isHybridAccepted: true,
-    isOnSiteAccepted: true,
-    preferredEmploymentTypes: 'FullTime',
-    excludedCompanies: '',
-    isActivelyLooking: true,
+  const initialPref = profile?.jobPreference;
+
+  const [formData, setFormData] = useState<Omit<UpdateJobPreferenceRequest, 'preferredLocations'>>(() => {
+    if (initialPref) {
+      return {
+        minSalary: initialPref.minSalary,
+        maxSalary: initialPref.maxSalary,
+        isRemotePreferred: initialPref.isRemotePreferred,
+        isHybridAccepted: initialPref.isHybridAccepted,
+        isOnSiteAccepted: initialPref.isOnSiteAccepted,
+        preferredEmploymentTypes: initialPref.preferredEmploymentTypes,
+        excludedCompanies: initialPref.excludedCompanies || '',
+        isActivelyLooking: initialPref.isActivelyLooking,
+      };
+    }
+    return {
+      minSalary: undefined,
+      maxSalary: undefined,
+      isRemotePreferred: false,
+      isHybridAccepted: true,
+      isOnSiteAccepted: true,
+      preferredEmploymentTypes: 'FullTime',
+      excludedCompanies: '',
+      isActivelyLooking: true,
+    };
   });
 
-  const [preferredLocations, setPreferredLocations] = useState<PreferredLocationRequest[]>([]);
+  const [preferredLocations, setPreferredLocations] = useState<PreferredLocationRequest[]>(() => {
+    if (initialPref) {
+      return initialPref.preferredLocations.map((l) => ({
+        localityId: l.localityId,
+        name: l.name,
+        latitude: l.latitude,
+        longitude: l.longitude,
+        maxDistanceKm: l.maxDistanceKm,
+      }));
+    }
+    return [];
+  });
+
   const [localityOptions, setLocalityOptions] = useState<LocalityResponse[]>([]);
   const [localityInputValue, setLocalityInputValue] = useState('');
 
-  useEffect(() => {
-    if (profile?.jobPreference) {
-      const pref = profile.jobPreference;
-      setFormData({
-        minSalary: pref.minSalary,
-        maxSalary: pref.maxSalary,
-        isRemotePreferred: pref.isRemotePreferred,
-        isHybridAccepted: pref.isHybridAccepted,
-        isOnSiteAccepted: pref.isOnSiteAccepted,
-        preferredEmploymentTypes: pref.preferredEmploymentTypes,
-        excludedCompanies: pref.excludedCompanies || '',
-        isActivelyLooking: pref.isActivelyLooking,
-      });
-      setPreferredLocations(
-        pref.preferredLocations.map((l) => ({
-          localityId: l.localityId,
-          name: l.name,
-          latitude: l.latitude,
-          longitude: l.longitude,
-          maxDistanceKm: l.maxDistanceKm,
-        }))
-      );
-    }
-  }, [profile]);
 
   const handleSearchLocalities = useCallback(async (query: string) => {
     if (query.length < 2) {
@@ -157,10 +163,6 @@ export function PreferencesSection() {
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
-      <Typography variant="h6" gutterBottom>
-        Jobbpreferenser
-      </Typography>
-
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField
@@ -318,6 +320,7 @@ export function PreferencesSection() {
                       size="small"
                       onClick={() => handleRemoveLocation(loc.localityId)}
                       disabled={isLoading}
+                      aria-label={`Ta bort ${loc.name}`}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -329,9 +332,16 @@ export function PreferencesSection() {
         </Grid>
 
         <Grid size={{ xs: 12 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+            <Typography variant="subtitle2">
+              Uteslutna företag
+            </Typography>
+            <Tooltip title="Företag som du inte vill matchas med visas inte i dina rekommendationer" arrow>
+              <InfoOutlinedIcon fontSize="small" color="action" sx={{ cursor: 'help' }} />
+            </Tooltip>
+          </Box>
           <TextField
             fullWidth
-            label="Uteslutna företag"
             name="excludedCompanies"
             value={formData.excludedCompanies}
             onChange={handleChange}
@@ -342,7 +352,7 @@ export function PreferencesSection() {
         </Grid>
 
         <Grid size={{ xs: 12 }}>
-          <Button type="submit" variant="contained" disabled={isLoading} sx={{ mt: 2 }}>
+          <Button type="submit" variant="contained" color="secondary" disabled={isLoading} sx={{ mt: 2 }}>
             {isLoading ? 'Sparar...' : 'Spara preferenser'}
           </Button>
         </Grid>

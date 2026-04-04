@@ -75,10 +75,6 @@ export function ProfileForm() {
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
-      <Typography variant="h6" gutterBottom>
-        Grundläggande information
-      </Typography>
-
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField
@@ -133,6 +129,9 @@ export function ProfileForm() {
           <Typography variant="subtitle2" gutterBottom>
             Önskade jobbtitlar
           </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            Dessa titlar används för att matcha dig mot relevanta jobb.
+          </Typography>
           <TextField
             fullWidth
             label="Lägg till jobbtitel"
@@ -174,6 +173,7 @@ export function ProfileForm() {
           <Button
             type="submit"
             variant="contained"
+            color="secondary"
             disabled={isLoading}
             sx={{ mt: 2 }}
           >

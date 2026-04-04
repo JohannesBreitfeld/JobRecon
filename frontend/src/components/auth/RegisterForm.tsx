@@ -142,9 +142,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       <Button
         type="submit"
         variant="contained"
+        color="secondary"
         fullWidth
         size="large"
         disabled={isLoading}
+        sx={{ py: 1.3 }}
       >
         {isLoading ? <CircularProgress size={24} /> : 'Skapa konto'}
       </Button>
