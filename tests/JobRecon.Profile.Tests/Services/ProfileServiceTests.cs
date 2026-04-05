@@ -4,6 +4,7 @@ using JobRecon.Profile.Domain;
 using JobRecon.Profile.Infrastructure;
 using JobRecon.Profile.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 
@@ -20,6 +21,7 @@ public class ProfileServiceTests : IDisposable
     {
         var options = new DbContextOptionsBuilder<ProfileDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         _dbContext = new ProfileDbContext(options);
