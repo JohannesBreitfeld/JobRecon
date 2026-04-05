@@ -16,11 +16,13 @@ import {
   IconButton,
   Paper,
   Stack,
+  Chip,
 } from '@mui/material';
+import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
-import { useProfile, useUpdatePreferences } from '../../api/hooks/useProfile';
+import { useProfile, useUpdatePreferences, useUpdateProfile } from '../../api/hooks/useProfile';
 import { jobsApi, type LocalityResponse } from '../../api/jobs';
 import type {
   EmploymentType,
@@ -39,8 +41,9 @@ const employmentTypeLabels: Record<EmploymentType, string> = {
 export function PreferencesSection() {
   const { data: profile } = useProfile();
   const updatePreferencesMutation = useUpdatePreferences();
+  const updateProfileMutation = useUpdateProfile();
 
-  const isLoading = updatePreferencesMutation.isPending;
+  const isLoading = updatePreferencesMutation.isPending || updateProfileMutation.isPending;
 
   const initialPref = profile?.jobPreference;
 
@@ -81,6 +84,11 @@ export function PreferencesSection() {
     }
     return [];
   });
+
+  const [desiredJobTitles, setDesiredJobTitles] = useState<string[]>(
+    () => profile?.desiredJobTitles || []
+  );
+  const [newJobTitle, setNewJobTitle] = useState('');
 
   const [localityOptions, setLocalityOptions] = useState<LocalityResponse[]>([]);
   const [localityInputValue, setLocalityInputValue] = useState('');
@@ -138,6 +146,17 @@ export function PreferencesSection() {
     );
   };
 
+  const handleAddJobTitle = () => {
+    if (newJobTitle.trim() && !desiredJobTitles.includes(newJobTitle.trim())) {
+      setDesiredJobTitles((prev) => [...prev, newJobTitle.trim()]);
+      setNewJobTitle('');
+    }
+  };
+
+  const handleRemoveJobTitle = (title: string) => {
+    setDesiredJobTitles((prev) => prev.filter((t) => t !== title));
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -159,11 +178,56 @@ export function PreferencesSection() {
       ...formData,
       preferredLocations,
     });
+    updateProfileMutation.mutate({ desiredJobTitles });
   };
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
       <Grid container spacing={3}>
+        <Grid size={{ xs: 12 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            Önskade jobbtitlar
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+            Dessa titlar används för att matcha dig mot relevanta jobb.
+          </Typography>
+          <TextField
+            fullWidth
+            label="Lägg till jobbtitel"
+            value={newJobTitle}
+            onChange={(e) => setNewJobTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddJobTitle();
+              }
+            }}
+            disabled={isLoading}
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={handleAddJobTitle} disabled={isLoading || !newJobTitle.trim()}>
+                      <AddIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
+          />
+          <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {desiredJobTitles.map((title) => (
+              <Chip
+                key={title}
+                label={title}
+                onDelete={() => handleRemoveJobTitle(title)}
+                deleteIcon={<CloseIcon />}
+                disabled={isLoading}
+              />
+            ))}
+          </Box>
+        </Grid>
+
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField
             fullWidth

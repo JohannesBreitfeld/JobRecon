@@ -16,7 +16,7 @@ import {
 import { Search as SearchIcon, FilterList as FilterIcon, Clear as ClearIcon } from '@mui/icons-material';
 import { useJobsStore } from '../../stores/jobsStore';
 import { jobsApi } from '../../api/jobs';
-import type { WorkLocationType, EmploymentType } from '../../api/jobs';
+import type { WorkLocationType, EmploymentType, LocalityResponse } from '../../api/jobs';
 
 const workLocationLabels: Record<WorkLocationType, string> = {
   OnSite: 'På plats',
@@ -40,6 +40,9 @@ export function JobSearchFilters() {
   const [localLocation, setLocalLocation] = useState(searchParams.location || '');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [locationOptions, setLocationOptions] = useState<LocalityResponse[]>([]);
+  const [locationInputValue, setLocationInputValue] = useState(searchParams.location || '');
+  const [loadingLocations, setLoadingLocations] = useState(false);
 
   const fetchSuggestions = useCallback((input: string) => {
     if (!input || input.length < 2) {
@@ -55,24 +58,38 @@ export function JobSearchFilters() {
     });
   }, []);
 
+  const fetchLocations = useCallback((input: string) => {
+    if (!input || input.length < 2) {
+      setLocationOptions([]);
+      return;
+    }
+    setLoadingLocations(true);
+    jobsApi.searchLocalities(input, 20).then((results) => {
+      setLocationOptions(results);
+      setLoadingLocations(false);
+    }).catch(() => {
+      setLoadingLocations(false);
+    });
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => fetchSuggestions(localQuery), 300);
     return () => clearTimeout(timer);
   }, [localQuery, fetchSuggestions]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => fetchLocations(locationInputValue), 300);
+    return () => clearTimeout(timer);
+  }, [locationInputValue, fetchLocations]);
+
   const handleSearch = () => {
     setSearchParams({ query: localQuery, location: localLocation, page: 1 });
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
   };
 
   const handleClearFilters = () => {
     setLocalQuery('');
     setLocalLocation('');
+    setLocationInputValue('');
     setSearchParams({
       query: undefined,
       location: undefined,
@@ -146,12 +163,45 @@ export function JobSearchFilters() {
         </Grid>
 
         <Grid size={{ xs: 12, md: 4 }}>
-          <TextField
-            fullWidth
-            placeholder="Plats..."
-            value={localLocation}
-            onChange={(e) => setLocalLocation(e.target.value)}
-            onKeyPress={handleKeyPress}
+          <Autocomplete
+            freeSolo
+            options={locationOptions}
+            getOptionLabel={(option) =>
+              typeof option === 'string'
+                ? option
+                : `${option.name} (${option.population.toLocaleString('sv-SE')} inv.)`
+            }
+            filterOptions={(x) => x}
+            loading={loadingLocations}
+            inputValue={locationInputValue}
+            onInputChange={(_, value, reason) => {
+              if (reason !== 'reset') {
+                setLocationInputValue(value);
+                setLocalLocation(value);
+              }
+            }}
+            onChange={(_, value) => {
+              if (value && typeof value !== 'string') {
+                setLocalLocation(value.name);
+                setLocationInputValue(value.name);
+                setSearchParams({ query: localQuery, location: value.name, page: 1 });
+              } else if (typeof value === 'string') {
+                setLocalLocation(value);
+                setLocationInputValue(value);
+              }
+            }}
+            noOptionsText={locationInputValue.length < 2 ? 'Skriv minst 2 tecken...' : 'Inga resultat'}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Plats..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
+              />
+            )}
           />
         </Grid>
 

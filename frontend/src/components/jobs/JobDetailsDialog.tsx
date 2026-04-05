@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -15,6 +16,7 @@ import {
   MenuItem,
   InputLabel,
 } from '@mui/material';
+import DOMPurify from 'dompurify';
 import {
   Close as CloseIcon,
   Bookmark as BookmarkIcon,
@@ -225,17 +227,7 @@ export function JobDetailsDialog({ jobId, open, onClose }: JobDetailsDialogProps
 
             {/* Description */}
             {selectedJob.description && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Beskrivning
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ whiteSpace: 'pre-wrap' }}
-                >
-                  {selectedJob.description}
-                </Typography>
-              </Box>
+              <DescriptionBlock description={selectedJob.description} />
             )}
 
             {/* Required skills */}
@@ -338,5 +330,46 @@ export function JobDetailsDialog({ jobId, open, onClose }: JobDetailsDialogProps
         )}
       </DialogActions>
     </Dialog>
+  );
+}
+
+const HTML_TAG_REGEX = /<\/?[a-z][\s\S]*?>/i;
+
+function DescriptionBlock({ description }: { description: string }) {
+  const isHtml = HTML_TAG_REGEX.test(description);
+
+  const sanitizedHtml = useMemo(() => {
+    if (!isHtml) return null;
+    return DOMPurify.sanitize(description, {
+      ALLOWED_TAGS: [
+        'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'span', 'div',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote', 'hr',
+      ],
+      ALLOWED_ATTR: ['href', 'target', 'rel'],
+    });
+  }, [description, isHtml]);
+
+  return (
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="subtitle2" gutterBottom>
+        Beskrivning
+      </Typography>
+      {isHtml ? (
+        <Box
+          sx={{
+            typography: 'body2',
+            '& a': { color: 'primary.main' },
+            '& ul, & ol': { pl: 3 },
+            '& p': { mb: 1 },
+          }}
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml! }}
+        />
+      ) : (
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+          {description}
+        </Typography>
+      )}
+    </Box>
   );
 }

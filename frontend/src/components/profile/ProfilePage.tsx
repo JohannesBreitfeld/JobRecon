@@ -240,25 +240,12 @@ export function ProfilePage() {
         <SectionHeader
           icon={<PersonIcon />}
           title="Grundläggande information"
-          subtitle="Din erfarenhet och vilka roller du söker"
+          subtitle="Din erfarenhet och bakgrund"
           expanded={basicExpanded}
           onToggle={() => setBasicExpanded(!basicExpanded)}
         />
         <Collapse in={basicExpanded}>
           <ProfileForm />
-        </Collapse>
-      </Paper>
-
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, mt: 3, border: 1, borderColor: 'divider' }}>
-        <SectionHeader
-          icon={<CodeIcon />}
-          title="Kompetenser"
-          subtitle="Dina tekniska och professionella färdigheter"
-          expanded={skillsExpanded}
-          onToggle={() => setSkillsExpanded(!skillsExpanded)}
-        />
-        <Collapse in={skillsExpanded}>
-          <SkillsSection />
         </Collapse>
       </Paper>
 
@@ -272,6 +259,19 @@ export function ProfilePage() {
         />
         <Collapse in={prefsExpanded}>
           <PreferencesSection />
+        </Collapse>
+      </Paper>
+
+      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, mt: 3, border: 1, borderColor: 'divider' }}>
+        <SectionHeader
+          icon={<CodeIcon />}
+          title="Kompetenser"
+          subtitle="Dina tekniska och professionella färdigheter"
+          expanded={skillsExpanded}
+          onToggle={() => setSkillsExpanded(!skillsExpanded)}
+        />
+        <Collapse in={skillsExpanded}>
+          <SkillsSection />
         </Collapse>
       </Paper>
     </Container>
