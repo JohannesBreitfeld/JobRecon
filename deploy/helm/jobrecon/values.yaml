@@ -4,8 +4,10 @@
 global:
   image:
     registry: ghcr.io
+    owner: johannesbreitfeld
     tag: latest
     pullPolicy: IfNotPresent
+  imagePullSecrets: []
 
 # Identity Service
 identity:
@@ -167,7 +169,35 @@ networkPolicy:
 
 # Secrets - Values should be provided via --set or external secret management
 secrets:
+  # Set to false when using external secrets (e.g., SOPS with Flux CD)
+  create: true
   # These should be provided at deploy time, NEVER commit actual values
   postgresPassword: ""
   jwtSigningKey: ""
   rabbitMqPassword: ""
+
+# Infrastructure service endpoints
+infrastructure:
+  postgresql:
+    host: postgres
+    port: 5432
+  mongodb:
+    host: mongodb
+    port: 27017
+  redis:
+    host: redis-master
+    port: 6379
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+  qdrant:
+    host: qdrant
+    ports:
+      http: 6333
+      grpc: 6334
+  minio:
+    host: minio
+    port: 9000
+  ollama:
+    host: ollama
+    port: 11434

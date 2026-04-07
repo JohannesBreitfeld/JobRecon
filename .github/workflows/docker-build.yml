@@ -1,4 +1,4 @@
-name: Docker Build
+name: Docker Build & Deploy
 
 on:
   push:
@@ -13,8 +13,69 @@ env:
   NODE_VERSION: '20'
 
 jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      identity: ${{ steps.filter.outputs.identity }}
+      profile: ${{ steps.filter.outputs.profile }}
+      jobs: ${{ steps.filter.outputs.jobs }}
+      matching: ${{ steps.filter.outputs.matching }}
+      notifications: ${{ steps.filter.outputs.notifications }}
+      gateway: ${{ steps.filter.outputs.gateway }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      any_changed: ${{ steps.check.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - 'src/Shared/**'
+              - 'Directory.Build.props'
+              - 'Directory.Packages.props'
+            identity:
+              - *shared
+              - 'src/Services/JobRecon.Identity/**'
+            profile:
+              - *shared
+              - 'src/Services/JobRecon.Profile/**'
+            jobs:
+              - *shared
+              - 'src/Services/JobRecon.Jobs/**'
+            matching:
+              - *shared
+              - 'src/Services/JobRecon.Matching/**'
+            notifications:
+              - *shared
+              - 'src/Services/JobRecon.Notifications/**'
+            gateway:
+              - *shared
+              - 'src/Gateway/JobRecon.Gateway/**'
+            frontend:
+              - 'frontend/**'
+
+      - name: Check if any service changed
+        id: check
+        run: |
+          if [[ "${{ steps.filter.outputs.identity }}" == "true" || \
+                "${{ steps.filter.outputs.profile }}" == "true" || \
+                "${{ steps.filter.outputs.jobs }}" == "true" || \
+                "${{ steps.filter.outputs.matching }}" == "true" || \
+                "${{ steps.filter.outputs.notifications }}" == "true" || \
+                "${{ steps.filter.outputs.gateway }}" == "true" || \
+                "${{ steps.filter.outputs.frontend }}" == "true" ]]; then
+            echo "any_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-and-push:
-    name: Build and Push Images
+    name: Build ${{ matrix.service }}
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any_changed == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,33 +86,46 @@ jobs:
           - service: identity
             context: .
             dockerfile: src/Services/JobRecon.Identity/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.identity }}
           - service: profile
             context: .
             dockerfile: src/Services/JobRecon.Profile/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.profile }}
           - service: jobs
             context: .
             dockerfile: src/Services/JobRecon.Jobs/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.jobs }}
           - service: matching
             context: .
             dockerfile: src/Services/JobRecon.Matching/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.matching }}
           - service: notifications
             context: .
             dockerfile: src/Services/JobRecon.Notifications/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.notifications }}
           - service: gateway
             context: .
             dockerfile: src/Gateway/JobRecon.Gateway/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.gateway }}
           - service: frontend
             context: frontend
             dockerfile: frontend/Dockerfile
+            changed: ${{ needs.detect-changes.outputs.frontend }}
 
     steps:
+      - name: Skip unchanged service
+        if: matrix.changed != 'true'
+        run: echo "Skipping ${{ matrix.service }} - no changes detected"
+
       - uses: actions/checkout@v6
+        if: matrix.changed == 'true'
 
       - name: Set up Docker Buildx
+        if: matrix.changed == 'true'
         uses: docker/setup-buildx-action@v4
 
       - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
+        if: matrix.changed == 'true' && github.event_name != 'pull_request'
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
@@ -59,6 +133,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
+        if: matrix.changed == 'true'
         id: meta
         uses: docker/metadata-action@v6
         with:
@@ -71,6 +146,7 @@ jobs:
             type=sha
 
       - name: Build and push
+        if: matrix.changed == 'true'
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
@@ -80,3 +156,69 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy-to-homelab:
+    name: Deploy to Homelab
+    needs: [detect-changes, build-and-push]
+    if: github.ref == 'refs/heads/main' && needs.detect-changes.outputs.any_changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gitops repo
+        uses: actions/checkout@v6
+        with:
+          repository: JohannesBreitfeld/homelab-gitops
+          ssh-key: ${{ secrets.HOMELAB_GITOPS_DEPLOY_KEY }}
+          path: homelab-gitops
+
+      - name: Install yq
+        uses: mikefarah/yq@v4
+
+      - name: Update image tags
+        working-directory: homelab-gitops
+        env:
+          SHA_TAG: "sha-${{ github.sha }}"
+          IDENTITY_CHANGED: ${{ needs.detect-changes.outputs.identity }}
+          PROFILE_CHANGED: ${{ needs.detect-changes.outputs.profile }}
+          JOBS_CHANGED: ${{ needs.detect-changes.outputs.jobs }}
+          MATCHING_CHANGED: ${{ needs.detect-changes.outputs.matching }}
+          NOTIFICATIONS_CHANGED: ${{ needs.detect-changes.outputs.notifications }}
+          GATEWAY_CHANGED: ${{ needs.detect-changes.outputs.gateway }}
+          FRONTEND_CHANGED: ${{ needs.detect-changes.outputs.frontend }}
+        run: |
+          SHORT_SHA="${SHA_TAG:0:12}"
+          VALUES_FILE="apps/jobrecon/values-images.yaml"
+
+          if [ "$IDENTITY_CHANGED" == "true" ]; then
+            yq -i ".identity.image.tag = \"$SHORT_SHA\"" "$VALUES_FILE"
+          fi
+          if [ "$PROFILE_CHANGED" == "true" ]; then
+            yq -i ".profile.image.tag = \"$SHORT_SHA\"" "$VALUES_FILE"
+          fi
+          if [ "$JOBS_CHANGED" == "true" ]; then
+            yq -i ".jobs.image.tag = \"$SHORT_SHA\"" "$VALUES_FILE"
+          fi
+          if [ "$MATCHING_CHANGED" == "true" ]; then
+            yq -i ".matching.image.tag = \"$SHORT_SHA\"" "$VALUES_FILE"
+          fi
+          if [ "$NOTIFICATIONS_CHANGED" == "true" ]; then
+            yq -i ".notifications.image.tag = \"$SHORT_SHA\"" "$VALUES_FILE"
+          fi
+          if [ "$GATEWAY_CHANGED" == "true" ]; then
+            yq -i ".gateway.image.tag = \"$SHORT_SHA\"" "$VALUES_FILE"
+          fi
+          if [ "$FRONTEND_CHANGED" == "true" ]; then
+            yq -i ".frontend.image.tag = \"$SHORT_SHA\"" "$VALUES_FILE"
+          fi
+
+      - name: Commit and push
+        working-directory: homelab-gitops
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "deploy: update jobrecon images to ${GITHUB_SHA::7}"
+            git push
+          fi

@@ -15,6 +15,10 @@ spec:
       labels:
         {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "matching") | nindent 8 }}
     spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: matching
           image: {{ include "jobrecon.image" (dict "global" .Values.global "service" .Values.matching) }}
@@ -26,39 +30,47 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Production
+            - name: Kestrel__Endpoints__Http__Url
+              value: http://+:8080
             - name: Jwt__SigningKey
               valueFrom:
                 secretKeyRef:
                   name: {{ include "jobrecon.fullname" . }}-secrets
                   key: jwt-signing-key
+            - name: Redis__ConnectionString
+              value: "{{ .Values.infrastructure.redis.host }}:{{ .Values.infrastructure.redis.port }}"
             - name: GrpcServices__ProfileService
               value: "http://{{ include "jobrecon.fullname" . }}-profile:5012"
             - name: GrpcServices__JobsService
               value: "http://{{ include "jobrecon.fullname" . }}-jobs:5013"
             - name: RabbitMQ__Host
-              value: rabbitmq
+              value: {{ .Values.infrastructure.rabbitmq.host | quote }}
+            - name: RabbitMQ__Port
+              value: {{ .Values.infrastructure.rabbitmq.port | quote }}
+            - name: RabbitMQ__Username
+              value: "jobrecon"
             - name: RabbitMQ__Password
               valueFrom:
                 secretKeyRef:
                   name: {{ include "jobrecon.fullname" . }}-secrets
                   key: rabbitmq-password
             - name: Ollama__BaseUrl
-              value: http://ollama:11434
+              value: "http://{{ .Values.infrastructure.ollama.host }}:{{ .Values.infrastructure.ollama.port }}"
             - name: Qdrant__Host
-              value: qdrant
+              value: {{ .Values.infrastructure.qdrant.host | quote }}
             - name: Qdrant__GrpcPort
-              value: "6334"
+              value: {{ .Values.infrastructure.qdrant.ports.grpc | quote }}
           livenessProbe:
             httpGet:
               path: /health/live
               port: http
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health/ready
               port: http
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
           resources:
             {{- toYaml .Values.matching.resources | nindent 12 }}

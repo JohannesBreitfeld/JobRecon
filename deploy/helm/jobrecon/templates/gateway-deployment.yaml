@@ -15,6 +15,10 @@ spec:
       labels:
         {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "gateway") | nindent 8 }}
     spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: gateway
           image: {{ include "jobrecon.image" (dict "global" .Values.global "service" .Values.gateway) }}
@@ -26,27 +30,38 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Production
+            - name: Jwt__SigningKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: jwt-signing-key
+            - name: Redis__ConnectionString
+              value: "{{ .Values.infrastructure.redis.host }}:{{ .Values.infrastructure.redis.port }}"
             - name: ReverseProxy__Clusters__identity__Destinations__default__Address
-              value: http://{{ include "jobrecon.fullname" . }}-identity:{{ .Values.identity.service.port }}
+              value: http://{{ include "jobrecon.fullname" . }}-identity:8080
             - name: ReverseProxy__Clusters__profile__Destinations__default__Address
-              value: http://{{ include "jobrecon.fullname" . }}-profile:{{ .Values.profile.service.port }}
+              value: http://{{ include "jobrecon.fullname" . }}-profile:8080
             - name: ReverseProxy__Clusters__jobs__Destinations__default__Address
-              value: http://{{ include "jobrecon.fullname" . }}-jobs:{{ .Values.jobs.service.port }}
+              value: http://{{ include "jobrecon.fullname" . }}-jobs:8080
             - name: ReverseProxy__Clusters__matching__Destinations__default__Address
-              value: http://{{ include "jobrecon.fullname" . }}-matching:{{ .Values.matching.service.port }}
+              value: http://{{ include "jobrecon.fullname" . }}-matching:8080
             - name: ReverseProxy__Clusters__notifications__Destinations__default__Address
-              value: http://{{ include "jobrecon.fullname" . }}-notifications:{{ .Values.notifications.service.port }}
+              value: http://{{ include "jobrecon.fullname" . }}-notifications:8080
+            - name: Cors__AllowedOrigins__0
+              value: "https://jobrecon.local"
+            - name: Cors__AllowedOrigins__1
+              value: "http://jobrecon.local"
           livenessProbe:
             httpGet:
               path: /health/live
               port: http
-            initialDelaySeconds: 10
+            initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health/ready
               port: http
-            initialDelaySeconds: 5
+            initialDelaySeconds: 10
             periodSeconds: 5
           resources:
             {{- toYaml .Values.gateway.resources | nindent 12 }}
