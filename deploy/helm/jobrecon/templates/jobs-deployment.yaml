@@ -64,17 +64,22 @@ spec:
                 secretKeyRef:
                   name: {{ include "jobrecon.fullname" . }}-secrets
                   key: rabbitmq-password
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /health/live
               port: http
-            initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health/ready
               port: http
-            initialDelaySeconds: 10
             periodSeconds: 5
           resources:
             {{- toYaml .Values.jobs.resources | nindent 12 }}
