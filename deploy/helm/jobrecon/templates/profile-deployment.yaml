@@ -68,6 +68,16 @@ spec:
               value: "{{ .Values.infrastructure.minio.host }}:{{ .Values.infrastructure.minio.port }}"
             - name: Minio__UseSSL
               value: "false"
+            - name: Minio__AccessKey
+              valueFrom:
+                secretKeyRef:
+                  name: jobrecon-infra-secrets
+                  key: rootUser
+            - name: Minio__SecretKey
+              valueFrom:
+                secretKeyRef:
+                  name: jobrecon-infra-secrets
+                  key: rootPassword
           livenessProbe:
             httpGet:
               path: /health/live
