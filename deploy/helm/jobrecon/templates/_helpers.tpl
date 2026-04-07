@@ -52,7 +52,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Service-specific labels
 */}}
 {{- define "jobrecon.serviceLabels" -}}
-{{ include "jobrecon.labels" . }}
+helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+app.kubernetes.io/name: {{ .Chart.Name | trunc 63 | trimSuffix "-" }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/component: {{ .component }}
 {{- end }}
 
@@ -60,7 +66,8 @@ app.kubernetes.io/component: {{ .component }}
 Service-specific selector labels
 */}}
 {{- define "jobrecon.serviceSelectorLabels" -}}
-{{ include "jobrecon.selectorLabels" . }}
+app.kubernetes.io/name: {{ .Chart.Name | trunc 63 | trimSuffix "-" }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: {{ .component }}
 {{- end }}
 
@@ -69,7 +76,8 @@ Create the image reference
 */}}
 {{- define "jobrecon.image" -}}
 {{- $registry := .global.image.registry -}}
+{{- $owner := .global.image.owner -}}
 {{- $repository := .service.image.repository -}}
 {{- $tag := default .global.image.tag .service.image.tag -}}
-{{- printf "%s/%s:%s" $registry $repository $tag -}}
+{{- printf "%s/%s/%s:%s" $registry $owner $repository $tag -}}
 {{- end }}
