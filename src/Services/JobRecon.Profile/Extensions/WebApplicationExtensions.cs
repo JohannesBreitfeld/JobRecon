@@ -45,9 +45,6 @@ public static class WebApplicationExtensions
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ProfileDbContext>();
 
-        if (app.Environment.IsDevelopment())
-        {
-            await dbContext.Database.MigrateAsync();
-        }
+        await dbContext.Database.MigrateAsync();
     }
 }
