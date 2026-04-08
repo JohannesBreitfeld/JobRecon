@@ -38,15 +38,15 @@ spec:
             - name: Redis__ConnectionString
               value: "{{ .Values.infrastructure.redis.host }}:{{ .Values.infrastructure.redis.port }}"
             - name: ReverseProxy__Clusters__identity__Destinations__destination1__Address
-              value: http://{{ include "jobrecon.fullname" . }}-identity:8080
+              value: http://{{ include "jobrecon.fullname" . }}-identity:{{ .Values.identity.service.port }}
             - name: ReverseProxy__Clusters__profile__Destinations__destination1__Address
-              value: http://{{ include "jobrecon.fullname" . }}-profile:8080
+              value: http://{{ include "jobrecon.fullname" . }}-profile:{{ .Values.profile.service.port }}
             - name: ReverseProxy__Clusters__jobs__Destinations__destination1__Address
-              value: http://{{ include "jobrecon.fullname" . }}-jobs:8080
+              value: http://{{ include "jobrecon.fullname" . }}-jobs:{{ .Values.jobs.service.port }}
             - name: ReverseProxy__Clusters__matching__Destinations__destination1__Address
-              value: http://{{ include "jobrecon.fullname" . }}-matching:8080
+              value: http://{{ include "jobrecon.fullname" . }}-matching:{{ .Values.matching.service.port }}
             - name: ReverseProxy__Clusters__notifications__Destinations__destination1__Address
-              value: http://{{ include "jobrecon.fullname" . }}-notifications:8080
+              value: http://{{ include "jobrecon.fullname" . }}-notifications:{{ .Values.notifications.service.port }}
             - name: Cors__AllowedOrigins__0
               value: "https://jobrecon.local"
             - name: Cors__AllowedOrigins__1
