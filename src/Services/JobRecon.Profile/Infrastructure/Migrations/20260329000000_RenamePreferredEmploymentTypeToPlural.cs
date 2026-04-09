@@ -12,6 +12,7 @@ public partial class RenamePreferredEmploymentTypeToPlural : Migration
     {
         migrationBuilder.RenameColumn(
             name: "PreferredEmploymentType",
+            schema: "profile",
             table: "JobPreferences",
             newName: "PreferredEmploymentTypes");
     }
@@ -21,6 +22,7 @@ public partial class RenamePreferredEmploymentTypeToPlural : Migration
     {
         migrationBuilder.RenameColumn(
             name: "PreferredEmploymentTypes",
+            schema: "profile",
             table: "JobPreferences",
             newName: "PreferredEmploymentType");
     }
