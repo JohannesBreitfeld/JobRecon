@@ -185,7 +185,7 @@ jobs:
           GATEWAY_CHANGED: ${{ needs.detect-changes.outputs.gateway }}
           FRONTEND_CHANGED: ${{ needs.detect-changes.outputs.frontend }}
         run: |
-          SHORT_SHA="${SHA_TAG:0:12}"
+          SHORT_SHA="${SHA_TAG:0:11}"
           VALUES_FILE="apps/jobrecon/values-images.yaml"
 
           if [ "$IDENTITY_CHANGED" == "true" ]; then
