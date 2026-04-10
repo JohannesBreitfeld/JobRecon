@@ -60,6 +60,11 @@ spec:
               value: {{ .Values.infrastructure.qdrant.host | quote }}
             - name: Qdrant__GrpcPort
               value: {{ .Values.infrastructure.qdrant.ports.grpc | quote }}
+            - name: GrpcApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: grpc-api-key
           livenessProbe:
             httpGet:
               path: /health/live

@@ -78,6 +78,11 @@ spec:
                 secretKeyRef:
                   name: jobrecon-infra-secrets
                   key: rootPassword
+            - name: GrpcApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: grpc-api-key
           livenessProbe:
             httpGet:
               path: /health/live

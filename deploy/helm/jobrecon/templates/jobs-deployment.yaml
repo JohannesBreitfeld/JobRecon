@@ -64,6 +64,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "jobrecon.fullname" . }}-secrets
                   key: rabbitmq-password
+            - name: GrpcApiKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "jobrecon.fullname" . }}-secrets
+                  key: grpc-api-key
           startupProbe:
             httpGet:
               path: /health/live
