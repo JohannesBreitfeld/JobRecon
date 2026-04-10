@@ -1,6 +1,7 @@
 using Hangfire;
 using Hangfire.Dashboard;
 using JobRecon.Jobs.Contracts;
+using JobRecon.Jobs.Domain;
 using JobRecon.Jobs.Infrastructure;
 using JobRecon.Jobs.Services;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -59,6 +60,26 @@ public static class WebApplicationExtensions
             {
                 logger.LogWarning("Locality seed file not found at {FilePath}. Run import manually.", seedFile);
             }
+        }
+
+        // Seed default job source if none exist
+        if (!await dbContext.JobSources.AnyAsync())
+        {
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<JobsDbContext>>();
+            logger.LogInformation("Seeding default JobTech Links job source");
+
+            dbContext.JobSources.Add(new JobSource
+            {
+                Id = Guid.NewGuid(),
+                Name = "JobTech Links (Arbetsförmedlingen)",
+                Type = JobSourceType.JobTechLinks,
+                BaseUrl = "https://data.jobtechdev.se/annonser/jobtechlinks",
+                IsEnabled = true,
+                FetchIntervalMinutes = 60
+            });
+
+            await dbContext.SaveChangesAsync();
+            logger.LogInformation("Default job source seeded successfully");
         }
     }
 
