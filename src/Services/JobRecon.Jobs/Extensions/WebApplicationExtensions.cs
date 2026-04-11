@@ -85,11 +85,12 @@ public static class WebApplicationExtensions
 
     public static void ConfigureRecurringJobs(this WebApplication app)
     {
-        // Fetch jobs every hour (daily files are published once per day, but check hourly to pick up new files quickly)
+        // Fetch jobs hourly — each run processes one day file and checkpoints,
+        // so the next run picks up the next day. Once caught up, it's a fast no-op.
         RecurringJob.AddOrUpdate<IJobFetcherService>(
             "fetch-all-jobs",
             service => service.FetchAllJobsAsync(CancellationToken.None),
-            "0 * * * *"); // Every hour at minute 0
+            "0 * * * *");
 
         // Enrich pending jobs every 15 minutes
         RecurringJob.AddOrUpdate<IJobEnrichmentService>(

@@ -44,15 +44,19 @@ public sealed class JobTechLinksFetcher : IJobFetcher
 
         config ??= new JobTechLinksConfig();
 
-        var datesToFetch = GetDatesToFetch(config);
+        var allDates = GetDatesToFetch(config);
 
-        if (datesToFetch.Count == 0)
+        if (allDates.Count == 0)
         {
             _logger.LogInformation("No new dates to fetch from JobTech Links");
             yield break;
         }
 
-        _logger.LogInformation("Fetching {Count} date files from JobTech Links", datesToFetch.Count);
+        // Process one day per run — checkpoint advances LastDownloadedDate so the next run picks up the next day
+        var datesToFetch = allDates.Take(1).ToList();
+
+        _logger.LogInformation("Fetching {Date} from JobTech Links ({Remaining} days remaining)",
+            datesToFetch[0], allDates.Count);
 
         // Download all date files in parallel, then yield results in date order
         var downloadResults = await DownloadAllDatesAsync(datesToFetch, cancellationToken);
