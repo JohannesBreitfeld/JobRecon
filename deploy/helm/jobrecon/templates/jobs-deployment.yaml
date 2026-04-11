@@ -80,12 +80,15 @@ spec:
             httpGet:
               path: /health/live
               port: http
-            periodSeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 12
           readinessProbe:
             httpGet:
               path: /health/ready
               port: http
-            periodSeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
           resources:
             {{- toYaml .Values.jobs.resources | nindent 12 }}
 {{- end }}
