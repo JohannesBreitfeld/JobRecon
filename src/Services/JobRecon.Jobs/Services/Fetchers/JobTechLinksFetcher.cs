@@ -13,7 +13,7 @@ namespace JobRecon.Jobs.Services.Fetchers;
 public sealed class JobTechLinksFetcher : IJobFetcher
 {
     private const string BaseDownloadUrl = "https://data.jobtechdev.se/annonser/jobtechlinks";
-    private const int MaxConcurrentDownloads = 3;
+    private const int MaxConcurrentDownloads = 1;
     private readonly HttpClient _httpClient;
     private readonly ILogger<JobTechLinksFetcher> _logger;
     private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;

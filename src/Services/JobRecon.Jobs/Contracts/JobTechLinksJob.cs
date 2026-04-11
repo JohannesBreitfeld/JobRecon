@@ -287,7 +287,7 @@ public sealed class JobTechLinksConfig
 {
     public string? LastDownloadedDate { get; set; }
     public int MaxDaysToFetch { get; set; } = 7;
-    public int MaxJobsPerFetch { get; set; } = 1000;
+    public int MaxJobsPerFetch { get; set; } = 0;
 }
 
 // ===== JSONL format models (actual format in downloaded .tar.gz files) =====
