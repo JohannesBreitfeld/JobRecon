@@ -105,6 +105,9 @@ public sealed class JobFetcherService : IJobFetcherService
 
             await foreach (var batch in fetcher.FetchJobBatchesAsync(source, cancellationToken))
             {
+                _logger.LogInformation("Processing batch of {Count} jobs from {SourceName}",
+                    batch.Jobs.Count, source.Name);
+
                 // Pre-compute hashes for all jobs in batch
                 var jobHashes = batch.Jobs.ToDictionary(j => j, j => ComputeHash(j));
 
@@ -210,16 +213,25 @@ public sealed class JobFetcherService : IJobFetcherService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching jobs from {SourceName}", source.Name);
+            Console.Error.WriteLine($"[FETCH ERROR] {source.Name}: {ex}");
 
-            // Re-load source in case tracker was cleared during processing
-            source = await _dbContext.JobSources
-                .FirstOrDefaultAsync(s => s.Id == sourceId, cancellationToken);
-
-            if (source is not null)
+            try
             {
-                source.LastFetchError = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
-                source.UpdatedAt = DateTime.UtcNow;
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                // Re-load source in case tracker was cleared during processing
+                source = await _dbContext.JobSources
+                    .FirstOrDefaultAsync(s => s.Id == sourceId, cancellationToken);
+
+                if (source is not null)
+                {
+                    source.LastFetchError = ex.Message.Length > 500 ? ex.Message[..500] : ex.Message;
+                    source.UpdatedAt = DateTime.UtcNow;
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
+            catch (Exception saveEx)
+            {
+                _logger.LogError(saveEx, "Failed to save fetch error for source {SourceId}", sourceId);
+                Console.Error.WriteLine($"[FETCH SAVE ERROR] {sourceId}: {saveEx}");
             }
         }
     }
