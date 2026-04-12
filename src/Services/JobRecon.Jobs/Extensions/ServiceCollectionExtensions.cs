@@ -90,7 +90,7 @@ public static class ServiceCollectionExtensions
         services.AddHangfireServer(options =>
         {
             options.WorkerCount = hangfireSettings?.WorkerCount ?? 2;
-            options.Queues = ["default", "jobs"];
+            options.Queues = ["jobs"];
         });
 
         return services;

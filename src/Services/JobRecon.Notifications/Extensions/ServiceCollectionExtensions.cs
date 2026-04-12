@@ -69,7 +69,7 @@ public static class ServiceCollectionExtensions
         services.AddHangfireServer(options =>
         {
             options.WorkerCount = hangfireSettings?.WorkerCount ?? 2;
-            options.Queues = ["default", "notifications"];
+            options.Queues = ["notifications"];
         });
 
         return services;

@@ -89,20 +89,23 @@ public static class WebApplicationExtensions
         // so the next run picks up the next day. Once caught up, it's a fast no-op.
         RecurringJob.AddOrUpdate<IJobFetcherService>(
             "fetch-all-jobs",
+            "jobs",
             service => service.FetchAllJobsAsync(CancellationToken.None),
             "0 * * * *");
 
         // Enrich pending jobs every 15 minutes
         RecurringJob.AddOrUpdate<IJobEnrichmentService>(
             "enrich-pending-jobs",
+            "jobs",
             service => service.EnrichPendingJobsAsync(50, CancellationToken.None),
-            "*/15 * * * *"); // Every 15 minutes
+            "*/15 * * * *");
 
         // Backfill geocoding for existing jobs (one-time, then self-disabling)
         RecurringJob.AddOrUpdate<IGeocodingBackfillService>(
             "backfill-geocoding",
+            "jobs",
             service => service.BackfillAsync(5000, CancellationToken.None),
-            "*/10 * * * *"); // Every 10 minutes until all jobs are geocoded
+            "*/10 * * * *");
     }
 }
 

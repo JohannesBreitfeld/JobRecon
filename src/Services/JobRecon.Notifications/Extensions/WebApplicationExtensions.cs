@@ -93,14 +93,16 @@ public static class WebApplicationExtensions
         // Process digest emails every hour
         RecurringJob.AddOrUpdate<IDigestService>(
             "process-pending-digests",
+            "notifications",
             service => service.ProcessPendingDigestsAsync(CancellationToken.None),
-            "0 * * * *"); // Every hour at minute 0
+            "0 * * * *");
 
         // Cleanup old notifications daily at 3 AM
         RecurringJob.AddOrUpdate<IDigestService>(
             "cleanup-old-notifications",
+            "notifications",
             service => service.CleanupOldNotificationsAsync(30, CancellationToken.None),
-            "0 3 * * *"); // Daily at 3:00 AM
+            "0 3 * * *");
     }
 }
 
