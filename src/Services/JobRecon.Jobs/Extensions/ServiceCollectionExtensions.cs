@@ -85,7 +85,8 @@ public static class ServiceCollectionExtensions
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
             .UsePostgreSqlStorage(options =>
-                options.UseNpgsqlConnection(connectionString)));
+                options.UseNpgsqlConnection(connectionString),
+                new PostgreSqlStorageOptions { SchemaName = "hangfire_jobs" }));
 
         services.AddHangfireServer(options =>
         {
