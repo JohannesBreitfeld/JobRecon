@@ -12,16 +12,18 @@ JobRecon is a microservices-based job matching platform that helps users find re
 |-------|------------|
 | Runtime | .NET 10, C# |
 | Web Framework | ASP.NET Core Minimal APIs |
-| Frontend | React 18 + TypeScript + MUI |
+| Frontend | React 19 + TypeScript 6 + MUI |
 | API Docs | NSwag (OpenAPI + TypeScript client gen) |
 | Identity | ASP.NET Core Identity + JWT Bearer |
-| Database | PostgreSQL (relational), MongoDB (jobs) |
+| Database | PostgreSQL (all services) |
 | Vector DB | Qdrant |
-| Messaging | MassTransit + RabbitMQ |
+| Caching | Redis (StackExchange.Redis) |
+| Messaging | RabbitMQ (RabbitMQ.Client, not MassTransit) |
+| Background Jobs | Hangfire (PostgreSQL storage) |
 | AI/LLM | Ollama (Mistral 7B, nomic-embed-text) |
 | Container | Docker, k3s (Kubernetes) |
 | CI/CD | GitHub Actions |
-| GitOps | ArgoCD |
+| GitOps | Flux CD + Helm |
 
 ## Critical Rules
 
@@ -33,9 +35,8 @@ JobRecon is a microservices-based job matching platform that helps users find re
 - NEVER put secrets in appsettings.json or any committed file
 - ALWAYS use:
   - `dotnet user-secrets` for local development
-  - Kubernetes Secrets / Sealed Secrets for k3s
+  - SOPS-encrypted secrets for k3s (age key)
   - GitHub Secrets for CI/CD
-  - Azure Key Vault for production
 - If you see a secret in code, STOP and ask how to fix it
 
 ```csharp
@@ -150,21 +151,25 @@ JobRecon/
 │   ├── Shared/
 │   │   ├── JobRecon.Contracts/      # DTOs, events, shared models
 │   │   ├── JobRecon.Domain/         # Domain entities, value objects
-│   │   └── JobRecon.Infrastructure/ # Cross-cutting concerns
+│   │   ├── JobRecon.Infrastructure/ # Cross-cutting concerns (Redis, RabbitMQ, etc.)
+│   │   └── JobRecon.Protos/         # gRPC proto definitions
 │   │
 │   ├── Services/
-│   │   ├── JobRecon.Identity/       # Auth service (port 5001)
-│   │   ├── JobRecon.Profile/        # Profile service (port 5002)
-│   │   ├── JobRecon.Jobs/           # Jobs service (port 5003)
-│   │   ├── JobRecon.Matching/       # Matching service (port 5005)
-│   │   └── JobRecon.Notifications/  # Notifications service (port 5006)
+│   │   ├── JobRecon.Identity/       # Auth service (HTTP 5001, gRPC 5011)
+│   │   ├── JobRecon.Profile/        # Profile service (HTTP 5002, gRPC 5012)
+│   │   ├── JobRecon.Jobs/           # Jobs service (HTTP 5003, gRPC 5013) + Hangfire
+│   │   ├── JobRecon.Matching/       # Matching service (HTTP 5005) — vector search
+│   │   └── JobRecon.Notifications/  # Notifications service (HTTP 5006)
 │   │
 │   └── Gateway/
-│       └── JobRecon.Gateway/        # API Gateway
+│       └── JobRecon.Gateway/        # API Gateway (YARP reverse proxy)
 │
-├── frontend/                        # React + TypeScript app
-├── tests/                           # Test projects
-├── deploy/                          # Kubernetes, Helm, Docker
+├── frontend/                        # React 19 + TypeScript + MUI
+├── tests/                           # xUnit test projects (per service)
+├── deploy/
+│   ├── docker/                      # docker-compose for local dev
+│   └── helm/jobrecon/               # Helm chart (deployed via Flux CD)
+├── scripts/                         # Utility scripts
 └── docs/                            # Architecture documentation
 ```
 
@@ -281,8 +286,13 @@ nswag run nswag.json
 # Frontend dev server
 cd frontend && npm run dev
 
+# Frontend lint (must pass before committing)
+cd frontend && npm run lint
+
 # Docker compose (local dev)
 docker compose -f deploy/docker/docker-compose.yml up -d
+
+# Helm chart is at deploy/helm/jobrecon/ — bump Chart.yaml version when changing templates
 ```
 
 ## What Claude Should Do
