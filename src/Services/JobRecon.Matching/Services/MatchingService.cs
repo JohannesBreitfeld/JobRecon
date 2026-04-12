@@ -194,7 +194,7 @@ public sealed class MatchingService : IMatchingService
         CancellationToken ct)
     {
         const int batchSize = 100;
-        const int maxJobsToScan = 5000;
+        const int maxJobsToScan = 100_000;
 
         _logger.LogWarning("Using heuristic-only matching (vector search unavailable). Performance will be degraded");
 

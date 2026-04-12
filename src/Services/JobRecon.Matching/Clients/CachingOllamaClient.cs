@@ -22,8 +22,12 @@ public sealed class CachingOllamaClient(
             var cached = await cache.GetAsync(key, ct);
             if (cached is not null)
             {
-                logger.LogDebug("Embedding cache hit for key {Key}", key);
-                return JsonSerializer.Deserialize<float[]>(cached);
+                var deserialized = JsonSerializer.Deserialize<float[]>(cached);
+                if (deserialized is { Length: > 0 })
+                {
+                    logger.LogDebug("Embedding cache hit for key {Key}", key);
+                    return deserialized;
+                }
             }
         }
         catch (Exception ex)

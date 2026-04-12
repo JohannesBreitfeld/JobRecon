@@ -40,8 +40,11 @@ public sealed class JobEmbeddingService(
                     {
                         var text = BuildJobText(job);
                         var embedding = await ollamaClient.GetEmbeddingAsync(text, ct);
-                        if (embedding is null)
+                        if (embedding is null || embedding.Length == 0)
+                        {
+                            logger.LogDebug("Skipping job {JobId}: empty embedding", job.Id);
                             return false;
+                        }
 
                         var geoPayload = (job.Latitude.HasValue && job.Longitude.HasValue)
                             ? new GeoPayload(job.Latitude.Value, job.Longitude.Value)
@@ -49,6 +52,11 @@ public sealed class JobEmbeddingService(
 
                         await vectorStore.UpsertAsync(job.Id, embedding, geoPayload, ct);
                         return true;
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        logger.LogWarning(ex, "Failed to embed job {JobId}", job.Id);
+                        return false;
                     }
                     finally
                     {

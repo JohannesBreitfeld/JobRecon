@@ -6,7 +6,7 @@ public sealed class JobEmbeddingWorker(
     IServiceScopeFactory scopeFactory,
     ILogger<JobEmbeddingWorker> logger) : BackgroundService
 {
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
