@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi, type AuthResponse, type LoginRequest, type RegisterRequest, type UserInfo } from '../api/auth';
+import { setSessionExpiredCallback } from '../api/client';
 
 interface AuthState {
   user: UserInfo | null;
@@ -112,3 +113,9 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+// When the API client detects an expired session (refresh failed),
+// reset the Zustand store so the UI reflects the logged-out state.
+setSessionExpiredCallback(() => {
+  useAuthStore.setState({ user: null, isAuthenticated: false, error: null });
+});

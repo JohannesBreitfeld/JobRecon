@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { CircularProgress, Box } from '@mui/material';
 import { Layout } from './components/layout/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { useAuthStore } from './stores/authStore';
 
 const HomePage = lazy(() =>
   import('./pages/HomePage').then((m) => ({ default: m.HomePage }))
@@ -39,6 +40,15 @@ function PageLoader() {
 }
 
 function App() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const refreshUser = useAuthStore((s) => s.refreshUser);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshUser();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <ErrorBoundary>
       <Layout>

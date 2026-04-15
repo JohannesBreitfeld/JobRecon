@@ -2,6 +2,13 @@ import { translateError } from '../i18n/errors.sv';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
+type SessionExpiredCallback = () => void;
+let onSessionExpired: SessionExpiredCallback | null = null;
+
+export function setSessionExpiredCallback(cb: SessionExpiredCallback): void {
+  onSessionExpired = cb;
+}
+
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
@@ -22,18 +29,10 @@ class ApiClient {
     if (!refreshToken) return false;
 
     try {
-      const response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const data = await response.json();
+      const data = await this.request<{ accessToken: string; refreshToken: string }>(
+        '/api/auth/refresh',
+        { method: 'POST', body: JSON.stringify({ refreshToken }), skipAuth: true }
+      );
       localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('refreshToken', data.refreshToken);
       return true;
@@ -46,6 +45,7 @@ class ApiClient {
   private clearTokens(): void {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    onSessionExpired?.();
   }
 
   async request<T>(
