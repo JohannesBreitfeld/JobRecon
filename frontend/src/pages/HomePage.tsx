@@ -1,5 +1,7 @@
 import { Container, Typography, Box, Button, Paper, Stack, alpha, Chip } from '@mui/material';
+import { Helmet } from 'react-helmet-async';
 import { Link as RouterLink } from 'react-router-dom';
+import { PageMeta } from '../components/PageMeta';
 import {
   SmartToy as SmartToyIcon,
   Notifications as NotificationsIcon,
@@ -294,8 +296,34 @@ function ProductPreview() {
 export function HomePage() {
   const { isAuthenticated, user } = useAuthStore();
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        name: 'JobRecon',
+        url: 'https://jobrecon.se',
+        description: 'AI-driven jobbmatchning som förstår dina färdigheter, erfarenhet och karriärmål.',
+        inLanguage: 'sv-SE',
+      },
+      {
+        '@type': 'Organization',
+        name: 'JobRecon',
+        url: 'https://jobrecon.se',
+        logo: 'https://jobrecon.se/images/logo.png',
+      },
+    ],
+  };
+
   return (
     <Box>
+      <PageMeta
+        title="JobRecon"
+        description="AI-driven jobbmatchning som förstår dina färdigheter, erfarenhet och karriärmål. Hitta ditt perfekta jobb med smart matchning."
+      />
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      </Helmet>
       {isAuthenticated ? (
         <AuthenticatedDashboard userName={user?.firstName || user?.email || ''} />
       ) : (

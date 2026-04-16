@@ -24,6 +24,7 @@ import type { ProfileResponse } from '../../api/profile';
 import { ProfileForm } from './ProfileForm';
 import { SkillsSection } from './SkillsSection';
 import { PreferencesSection } from './PreferencesSection';
+import { PageMeta } from '../PageMeta';
 
 function calculateCompleteness(profile: ProfileResponse): number {
   let score = 0;
@@ -203,6 +204,7 @@ export function ProfilePage() {
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
+      <PageMeta title="Min profil" noIndex />
       <Typography variant="h4" gutterBottom>
         Min profil
       </Typography>

@@ -8,6 +8,7 @@ import {
   alpha,
 } from '@mui/material';
 import { RegisterForm } from '../components/auth/RegisterForm';
+import { PageMeta } from '../components/PageMeta';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export function RegisterPage() {
           `linear-gradient(160deg, ${alpha(theme.palette.primary.dark, 0.03)} 0%, ${alpha(theme.palette.secondary.main, 0.04)} 100%)`,
       }}
     >
+      <PageMeta title="Skapa konto" description="Registrera dig på JobRecon och börja hitta jobb som matchar dina färdigheter med AI-driven matchning." />
       <Container maxWidth="sm">
         <Box
           sx={{

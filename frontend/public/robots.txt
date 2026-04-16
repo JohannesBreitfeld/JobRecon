@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /profile
+Disallow: /recommendations
+Disallow: /reset-password
+Disallow: /forgot-password
+
+Sitemap: https://jobrecon.se/sitemap.xml

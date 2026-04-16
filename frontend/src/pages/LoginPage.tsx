@@ -8,6 +8,7 @@ import {
   alpha,
 } from '@mui/material';
 import { LoginForm } from '../components/auth/LoginForm';
+import { PageMeta } from '../components/PageMeta';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export function LoginPage() {
           `linear-gradient(160deg, ${alpha(theme.palette.primary.dark, 0.03)} 0%, ${alpha(theme.palette.secondary.main, 0.04)} 100%)`,
       }}
     >
+      <PageMeta title="Logga in" description="Logga in på JobRecon för att se dina personliga jobbmatchningar." />
       <Container maxWidth="sm">
         <Box
           sx={{

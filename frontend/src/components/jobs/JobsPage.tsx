@@ -7,6 +7,7 @@ import { SavedJobsList } from './SavedJobsList';
 import { JobDetailsDialog } from './JobDetailsDialog';
 import { useSavedJobs } from '../../api/hooks/useJobs';
 import { useAuthStore } from '../../stores/authStore';
+import { PageMeta } from '../PageMeta';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -43,6 +44,7 @@ export function JobsPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      <PageMeta title="Sök jobb" description="Sök bland tusentals lediga tjänster i Sverige. Filtrera på plats, kompetens och mer." />
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" gutterBottom>
           Jobb

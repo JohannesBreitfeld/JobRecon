@@ -16,6 +16,7 @@ import {
   alpha,
 } from '@mui/material';
 import { authApi } from '../api/auth';
+import { PageMeta } from '../components/PageMeta';
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Ogiltig e-postadress'),
@@ -59,6 +60,7 @@ export function ForgotPasswordPage() {
           `linear-gradient(160deg, ${alpha(theme.palette.primary.dark, 0.03)} 0%, ${alpha(theme.palette.secondary.main, 0.04)} 100%)`,
       }}
     >
+      <PageMeta title="Glömt lösenord" noIndex />
       <Container maxWidth="sm">
         <Box
           sx={{

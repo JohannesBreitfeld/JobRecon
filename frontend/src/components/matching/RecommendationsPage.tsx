@@ -24,6 +24,7 @@ import { useRecommendations } from '../../api/hooks/useMatching';
 import { ApiError } from '../../api/client';
 import { MatchCard } from './MatchCard';
 import { JobDetailsDialog } from '../jobs/JobDetailsDialog';
+import { PageMeta } from '../PageMeta';
 
 export function RecommendationsPage() {
   const navigate = useNavigate();
@@ -52,6 +53,7 @@ export function RecommendationsPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      <PageMeta title="Rekommendationer" description="Dina personliga jobbmatchningar baserade på din profil och kompetenser." noIndex />
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
           <TrendingUpIcon color="primary" />
