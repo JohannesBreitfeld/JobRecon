@@ -17,10 +17,12 @@ public sealed class JobsGrpcService(
         GetActiveJobsRequest request,
         ServerCallContext context)
     {
+        var now = DateTime.UtcNow;
         var query = dbContext.Jobs
             .Include(j => j.Company)
             .Include(j => j.Tags)
             .Where(j => j.Status == JobStatus.Active)
+            .Where(j => j.ExpiresAt == null || j.ExpiresAt > now)
             .OrderByDescending(j => j.PostedAt)
             .AsNoTracking();
 

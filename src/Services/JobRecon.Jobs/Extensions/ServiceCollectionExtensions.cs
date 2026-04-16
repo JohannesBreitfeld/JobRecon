@@ -52,6 +52,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJobSourceService, JobSourceService>();
         services.AddScoped<IJobFetcherService, JobFetcherService>();
         services.AddScoped<IJobEnrichmentService, JobEnrichmentService>();
+        services.AddScoped<IJobExpirationService, JobExpirationService>();
+        services.AddSingleton<IPlaywrightPageFactory, PlaywrightPageFactory>();
         services.AddScoped<ILocalityService, LocalityService>();
         services.AddScoped<ILocalityImportService, LocalityImportService>();
         services.AddScoped<IGeocodingService, GeocodingService>();
@@ -63,10 +65,6 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<JobTechLinksFetcher>()
             .AddPolicyHandler(GetRetryPolicy());
         services.AddScoped<IJobFetcher, JobTechLinksFetcher>();
-
-        // HttpClient for enrichment service
-        services.AddHttpClient<JobEnrichmentService>()
-            .AddPolicyHandler(GetRetryPolicy());
 
         return services;
     }

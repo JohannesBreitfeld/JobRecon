@@ -1,12 +1,14 @@
 using System.Collections.Concurrent;
+using System.Globalization;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using AngleSharp;
 using AngleSharp.Html.Parser;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Domain;
 using JobRecon.Jobs.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Polly;
-using Polly.Retry;
+using Microsoft.Playwright;
 using AngleSharpConfig = AngleSharp.Configuration;
 
 namespace JobRecon.Jobs.Services;
@@ -14,29 +16,36 @@ namespace JobRecon.Jobs.Services;
 public sealed class JobEnrichmentService : IJobEnrichmentService
 {
     private readonly JobsDbContext _dbContext;
-    private readonly HttpClient _httpClient;
+    private readonly IPlaywrightPageFactory _pageFactory;
     private readonly IGeocodingService _geocodingService;
     private readonly ILogger<JobEnrichmentService> _logger;
-    private readonly AsyncRetryPolicy<HttpResponseMessage> _retryPolicy;
     private readonly ConcurrentDictionary<string, DateTime> _domainLastAccess = new();
     private static readonly TimeSpan RateLimitDelay = TimeSpan.FromSeconds(1);
+    private const int MaxConcurrency = 5;
+
+    private static readonly string[] DeadlineLabels =
+    [
+        "sista ansökningsdag", "sista ansökningsdatum", "ansök senast", "sista dag att ansöka",
+        "apply before", "application deadline", "closing date", "last day to apply"
+    ];
+
+    private static readonly Regex DatePatternIso = new(
+        @"\b(\d{4}-\d{2}-\d{2})\b", RegexOptions.Compiled);
+
+    private static readonly Regex DatePatternDmy = new(
+        @"\b(\d{1,2})\s+(januari|februari|mars|april|maj|juni|juli|augusti|september|oktober|november|december|january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public JobEnrichmentService(
         JobsDbContext dbContext,
-        HttpClient httpClient,
+        IPlaywrightPageFactory pageFactory,
         IGeocodingService geocodingService,
         ILogger<JobEnrichmentService> logger)
     {
         _dbContext = dbContext;
-        _httpClient = httpClient;
+        _pageFactory = pageFactory;
         _geocodingService = geocodingService;
         _logger = logger;
-
-        _retryPolicy = Policy
-            .HandleResult<HttpResponseMessage>(r => r.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-            .Or<HttpRequestException>()
-            .WaitAndRetryAsync(3, retryAttempt =>
-                TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 
     public async Task EnrichJobAsync(Guid jobId, CancellationToken cancellationToken = default)
@@ -79,25 +88,29 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
             return 0;
         }
 
-        _logger.LogInformation("Enriching {Count} pending jobs", pendingJobs.Count);
+        _logger.LogInformation("Enriching {Count} pending jobs (concurrency: {Concurrency})",
+            pendingJobs.Count, MaxConcurrency);
 
         var enrichedCount = 0;
 
-        foreach (var job in pendingJobs)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                break;
-
-            try
+        await Parallel.ForEachAsync(pendingJobs,
+            new ParallelOptions
             {
-                await EnrichJobInternalAsync(job, cancellationToken);
-                enrichedCount++;
-            }
-            catch (Exception ex)
+                MaxDegreeOfParallelism = MaxConcurrency,
+                CancellationToken = cancellationToken
+            },
+            async (job, ct) =>
             {
-                _logger.LogError(ex, "Failed to enrich job {JobId}", job.Id);
-            }
-        }
+                try
+                {
+                    await EnrichJobInternalAsync(job, ct);
+                    Interlocked.Increment(ref enrichedCount);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to enrich job {JobId}", job.Id);
+                }
+            });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -112,7 +125,7 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
             // Rate limiting per domain
             await RateLimitAsync(job.ExternalUrl!, cancellationToken);
 
-            var htmlContent = await FetchHtmlAsync(job.ExternalUrl!, cancellationToken);
+            var htmlContent = await FetchRenderedHtmlAsync(job.ExternalUrl!, cancellationToken);
 
             if (string.IsNullOrEmpty(htmlContent))
             {
@@ -138,6 +151,14 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
             if (!string.IsNullOrEmpty(enrichedData.Benefits) && string.IsNullOrEmpty(job.Benefits))
             {
                 job.Benefits = enrichedData.Benefits;
+            }
+
+            // Only set ExpiresAt if not already set from JobTech
+            if (job.ExpiresAt is null && enrichedData.ExpiresAt is not null)
+            {
+                job.ExpiresAt = enrichedData.ExpiresAt;
+                _logger.LogDebug("Extracted application deadline {Deadline} for job {JobId}",
+                    enrichedData.ExpiresAt, job.Id);
             }
 
             // Geocode location if not already geocoded
@@ -187,31 +208,57 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
         _domainLastAccess[domain] = DateTime.UtcNow;
     }
 
-    private async Task<string?> FetchHtmlAsync(string url, CancellationToken cancellationToken)
+    private async Task<string?> FetchRenderedHtmlAsync(string url, CancellationToken cancellationToken)
     {
+        IPage? page = null;
         try
         {
-            var response = await _retryPolicy.ExecuteAsync(async () =>
-            {
-                var request = new HttpRequestMessage(HttpMethod.Get, url);
-                request.Headers.Add("User-Agent", "JobRecon/1.0 (Job aggregation service)");
-                request.Headers.Add("Accept", "text/html,application/xhtml+xml");
+            page = await _pageFactory.CreatePageAsync();
 
-                return await _httpClient.SendAsync(request, cancellationToken);
+            var response = await page.GotoAsync(url, new PageGotoOptions
+            {
+                Timeout = 15_000,
+                WaitUntil = WaitUntilState.NetworkIdle
             });
 
-            if (!response.IsSuccessStatusCode)
+            if (response is null || !response.Ok)
             {
-                _logger.LogDebug("Failed to fetch {Url}: {StatusCode}", url, response.StatusCode);
+                _logger.LogDebug("Failed to navigate to {Url}: {Status}",
+                    url, response?.Status ?? 0);
                 return null;
             }
 
-            return await response.Content.ReadAsStringAsync(cancellationToken);
+            return await page.ContentAsync();
+        }
+        catch (TimeoutException)
+        {
+            // NetworkIdle timed out — try to get whatever content loaded
+            if (page is not null)
+            {
+                try
+                {
+                    return await page.ContentAsync();
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Error fetching {Url}", url);
+            _logger.LogDebug(ex, "Error fetching {Url} with Playwright", url);
             return null;
+        }
+        finally
+        {
+            if (page is not null)
+            {
+                var context = page.Context;
+                await page.CloseAsync();
+                await context.DisposeAsync();
+            }
         }
     }
 
@@ -229,6 +276,21 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
                 return result;
 
             var document = await parser.ParseDocumentAsync(html, cancellationToken);
+
+            // --- Extract application deadline ---
+
+            // Strategy A: JSON-LD structured data (most reliable)
+            result.ExpiresAt = ExtractDeadlineFromJsonLd(document);
+
+            // Strategy B: HTML text pattern matching (fallback)
+            if (result.ExpiresAt is null)
+            {
+                var bodyText = document.Body?.TextContent;
+                if (!string.IsNullOrEmpty(bodyText))
+                    result.ExpiresAt = ExtractDeadlineFromText(bodyText);
+            }
+
+            // --- Extract job content ---
 
             // Try common job description selectors
             var descriptionSelectors = new[]
@@ -313,10 +375,121 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
         return result;
     }
 
+    private static DateTime? ExtractDeadlineFromJsonLd(AngleSharp.Dom.IDocument document)
+    {
+        var scripts = document.QuerySelectorAll("script[type='application/ld+json']");
+
+        foreach (var script in scripts)
+        {
+            var json = script.TextContent?.Trim();
+            if (string.IsNullOrEmpty(json))
+                continue;
+
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                // Handle both single objects and arrays
+                var elements = root.ValueKind == JsonValueKind.Array
+                    ? root.EnumerateArray().ToList()
+                    : [root];
+
+                foreach (var element in elements)
+                {
+                    if (!IsJobPosting(element))
+                        continue;
+
+                    if (element.TryGetProperty("validThrough", out var validThrough))
+                    {
+                        var dateStr = validThrough.GetString();
+                        if (TryParseDate(dateStr, out var date))
+                            return date;
+                    }
+
+                    if (element.TryGetProperty("applicationDeadline", out var deadline))
+                    {
+                        var dateStr = deadline.GetString();
+                        if (TryParseDate(dateStr, out var date))
+                            return date;
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // Malformed JSON-LD, skip
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsJobPosting(JsonElement element)
+    {
+        if (element.TryGetProperty("@type", out var type))
+        {
+            var typeStr = type.GetString();
+            return typeStr is "JobPosting" or "jobPosting";
+        }
+        return false;
+    }
+
+    private static DateTime? ExtractDeadlineFromText(string text)
+    {
+        var lowerText = text.ToLowerInvariant();
+
+        foreach (var label in DeadlineLabels)
+        {
+            var labelIndex = lowerText.IndexOf(label, StringComparison.Ordinal);
+            if (labelIndex < 0)
+                continue;
+
+            // Look at the ~100 characters after the label for a date
+            var searchStart = labelIndex + label.Length;
+            var searchEnd = Math.Min(searchStart + 100, text.Length);
+            var snippet = text[searchStart..searchEnd];
+
+            // Try ISO date format (YYYY-MM-DD)
+            var isoMatch = DatePatternIso.Match(snippet);
+            if (isoMatch.Success && TryParseDate(isoMatch.Groups[1].Value, out var isoDate))
+                return isoDate;
+
+            // Try "D Month YYYY" format (Swedish/English month names)
+            var dmyMatch = DatePatternDmy.Match(snippet);
+            if (dmyMatch.Success)
+            {
+                var dateStr = dmyMatch.Value;
+                if (TryParseDate(dateStr, out var dmyDate))
+                    return dmyDate;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool TryParseDate(string? dateStr, out DateTime result)
+    {
+        result = default;
+        if (string.IsNullOrWhiteSpace(dateStr))
+            return false;
+
+        // Try standard ISO formats
+        if (DateTime.TryParse(dateStr, CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out result))
+            return true;
+
+        // Try Swedish culture
+        if (DateTime.TryParse(dateStr, new CultureInfo("sv-SE"),
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out result))
+            return true;
+
+        return false;
+    }
+
     private static string CleanText(string text)
     {
         // Remove excessive whitespace
-        text = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ");
+        text = Regex.Replace(text, @"\s+", " ");
         text = text.Trim();
 
         // Limit length
@@ -333,5 +506,6 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
         public string? Description { get; set; }
         public string? RequiredSkills { get; set; }
         public string? Benefits { get; set; }
+        public DateTime? ExpiresAt { get; set; }
     }
 }

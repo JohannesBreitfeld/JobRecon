@@ -93,12 +93,22 @@ public static class WebApplicationExtensions
             service => service.FetchAllJobsAsync(CancellationToken.None),
             "0 * * * *");
 
-        // Enrich pending jobs every 15 minutes
+        // Enrich pending jobs every 5 minutes — 100 jobs per batch with 5 concurrent
+        // Playwright pages. Rate limiter throttles per-domain to avoid hammering any
+        // single site. ~30 jobs/min throughput, catches up 60k backlog in ~33 hours.
         RecurringJob.AddOrUpdate<IJobEnrichmentService>(
             "enrich-pending-jobs",
             "jobs",
-            service => service.EnrichPendingJobsAsync(50, CancellationToken.None),
-            "*/15 * * * *");
+            service => service.EnrichPendingJobsAsync(100, CancellationToken.None),
+            "*/5 * * * *");
+
+        // Expire jobs with passed application deadlines — runs once daily at 00:01
+        // since deadlines are date-granularity, no need to run more often
+        RecurringJob.AddOrUpdate<IJobExpirationService>(
+            "expire-jobs",
+            "jobs",
+            service => service.ExpireJobsAsync(CancellationToken.None),
+            "1 0 * * *");
 
         // Backfill geocoding for existing jobs (one-time, then self-disabling)
         RecurringJob.AddOrUpdate<IGeocodingBackfillService>(

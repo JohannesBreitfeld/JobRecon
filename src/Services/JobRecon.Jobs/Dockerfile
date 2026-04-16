@@ -20,13 +20,20 @@ COPY src/ src/
 WORKDIR /src/src/Services/JobRecon.Jobs
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
-# Runtime stage
+# Runtime stage — noble (Ubuntu 24.04) for Playwright Chromium compatibility
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble AS runtime
 WORKDIR /app
 
 COPY --from=build /app/publish .
 
-RUN useradd --no-create-home --shell /bin/false appuser
+# Install Playwright Chromium and its OS dependencies
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN dotnet tool install --global Microsoft.Playwright.CLI && \
+    /root/.dotnet/tools/playwright install --with-deps chromium
+
+# Create non-root user (after browser install which needs root)
+RUN useradd --no-create-home --shell /bin/false appuser && \
+    chown -R appuser:appuser /ms-playwright
 USER appuser
 
 EXPOSE 8080

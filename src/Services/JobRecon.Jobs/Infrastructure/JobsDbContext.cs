@@ -76,6 +76,7 @@ public sealed class JobsDbContext : DbContext
             entity.HasIndex(e => new { e.Status, e.CreatedAt });
             entity.HasIndex(e => new { e.JobSourceId, e.Hash });
             entity.HasIndex(e => new { e.IsEnriched, e.Status, e.CreatedAt });
+            entity.HasIndex(e => new { e.Status, e.ExpiresAt });
 
             entity.Property(e => e.Title).HasMaxLength(500).IsRequired();
             entity.Property(e => e.NormalizedTitle).HasMaxLength(500);
