@@ -2,8 +2,8 @@ apiVersion: v2
 name: jobrecon
 description: JobRecon - AI-Powered Job Matching Platform
 type: application
-version: 0.7.6
-appVersion: "0.7.6"
+version: 0.7.7
+appVersion: "0.7.7"
 keywords:
   - job-matching
   - ai
