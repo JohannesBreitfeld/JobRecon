@@ -43,7 +43,8 @@ RUN apt-get update && \
 
 # Create non-root user (after browser install which needs root)
 RUN useradd --no-create-home --shell /bin/false appuser && \
-    chown -R appuser:appuser /ms-playwright
+    chown -R appuser:appuser /ms-playwright && \
+    chmod 755 /app/.playwright/node/linux-x64/node
 USER appuser
 
 EXPOSE 8080
