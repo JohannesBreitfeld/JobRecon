@@ -91,7 +91,7 @@ public sealed class EmailService : IEmailService
                 using var client = new SmtpClient();
                 await client.ConnectAsync(_settings.SmtpHost, _settings.SmtpPort, _settings.UseSsl, ct);
 
-                if (!string.IsNullOrEmpty(_settings.Username))
+                if (!string.IsNullOrEmpty(_settings.Username) && !string.IsNullOrEmpty(_settings.Password))
                 {
                     await client.AuthenticateAsync(_settings.Username, _settings.Password, ct);
                 }
