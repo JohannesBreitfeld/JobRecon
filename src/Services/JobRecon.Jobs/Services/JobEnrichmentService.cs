@@ -127,13 +127,6 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
 
             var htmlContent = await FetchRenderedHtmlAsync(job.ExternalUrl!, cancellationToken);
 
-            if (string.IsNullOrEmpty(htmlContent))
-            {
-                job.EnrichmentError = "Failed to fetch content";
-                job.UpdatedAt = DateTime.UtcNow;
-                return;
-            }
-
             var enrichedData = await ParseJobContentAsync(htmlContent, cancellationToken);
 
             // Only update if we got better data
@@ -208,7 +201,7 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
         _domainLastAccess[domain] = DateTime.UtcNow;
     }
 
-    private async Task<string?> FetchRenderedHtmlAsync(string url, CancellationToken cancellationToken)
+    private async Task<string> FetchRenderedHtmlAsync(string url, CancellationToken cancellationToken)
     {
         IPage? page = null;
         try
@@ -221,35 +214,28 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
                 WaitUntil = WaitUntilState.NetworkIdle
             });
 
-            if (response is null || !response.Ok)
-            {
-                _logger.LogDebug("Failed to navigate to {Url}: {Status}",
-                    url, response?.Status ?? 0);
-                return null;
-            }
+            if (response is null)
+                throw new InvalidOperationException($"No response from {url}");
 
-            return await page.ContentAsync();
+            if (!response.Ok)
+                throw new InvalidOperationException($"HTTP {response.Status} from {url}");
+
+            var content = await page.ContentAsync();
+            if (string.IsNullOrEmpty(content))
+                throw new InvalidOperationException($"Empty content from {url}");
+
+            return content;
         }
         catch (TimeoutException)
         {
-            // NetworkIdle timed out — try to get whatever content loaded
+            // NetworkIdle timed out — return whatever rendered so far
             if (page is not null)
             {
-                try
-                {
-                    return await page.ContentAsync();
-                }
-                catch
-                {
-                    return null;
-                }
+                var partial = await page.ContentAsync();
+                if (!string.IsNullOrEmpty(partial))
+                    return partial;
             }
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Error fetching {Url} with Playwright", url);
-            return null;
+            throw;
         }
         finally
         {
