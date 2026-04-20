@@ -1,4 +1,4 @@
-using AspNetCoreRateLimit;
+using JobRecon.Gateway.Middleware;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 namespace JobRecon.Gateway.Extensions;
@@ -19,7 +19,7 @@ public static class WebApplicationExtensions
         }
 
         app.UseResponseCompression();
-        app.UseIpRateLimiting();
+        app.UseResilientIpRateLimiting();
         app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
