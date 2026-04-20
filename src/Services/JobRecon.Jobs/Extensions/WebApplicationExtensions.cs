@@ -1,11 +1,13 @@
 using Hangfire;
 using Hangfire.Dashboard;
+using JobRecon.Jobs.Configuration;
 using JobRecon.Jobs.Contracts;
 using JobRecon.Jobs.Domain;
 using JobRecon.Jobs.Infrastructure;
 using JobRecon.Jobs.Services;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace JobRecon.Jobs.Extensions;
 
@@ -85,6 +87,12 @@ public static class WebApplicationExtensions
 
     public static void ConfigureRecurringJobs(this WebApplication app)
     {
+        var hangfireSettings = app.Services.GetRequiredService<IOptions<HangfireSettings>>().Value;
+        if (!hangfireSettings.EnableServer)
+        {
+            return;
+        }
+
         // Fetch jobs hourly — each run processes one day file and checkpoints,
         // so the next run picks up the next day. Once caught up, it's a fast no-op.
         RecurringJob.AddOrUpdate<IJobFetcherService>(

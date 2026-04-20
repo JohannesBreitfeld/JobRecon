@@ -7,4 +7,5 @@ public sealed class HangfireSettings
     public string ConnectionString { get; set; } = string.Empty;
     public string SchemaName { get; set; } = "hangfire";
     public int WorkerCount { get; set; } = 2;
+    public bool EnableServer { get; set; } = true;
 }

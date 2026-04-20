@@ -53,10 +53,11 @@ profile:
       cpu: 500m
       memory: 512Mi
 
-# Jobs Service
+# Jobs Service — split into web (HTTP/gRPC) and worker (Hangfire server) deployments.
+# autoscaling applies to the web deployment only; the worker is a singleton sized for
+# enrichment throughput (adjust replicaCount manually).
 jobs:
   enabled: true
-  replicaCount: 1
   image:
     repository: jobrecon-jobs
   service:
@@ -67,13 +68,24 @@ jobs:
     minReplicas: 1
     maxReplicas: 4
     targetCPUUtilizationPercentage: 70
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+  web:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  worker:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1500m
+        memory: 1536Mi
 
 # Matching Service
 matching:

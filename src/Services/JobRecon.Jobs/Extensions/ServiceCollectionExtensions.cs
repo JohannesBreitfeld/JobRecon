@@ -86,11 +86,14 @@ public static class ServiceCollectionExtensions
                 options.UseNpgsqlConnection(connectionString),
                 new PostgreSqlStorageOptions { SchemaName = "hangfire_jobs" }));
 
-        services.AddHangfireServer(options =>
+        if (hangfireSettings?.EnableServer ?? true)
         {
-            options.WorkerCount = hangfireSettings?.WorkerCount ?? 2;
-            options.Queues = ["jobs"];
-        });
+            services.AddHangfireServer(options =>
+            {
+                options.WorkerCount = hangfireSettings?.WorkerCount ?? 2;
+                options.Queues = ["jobs"];
+            });
+        }
 
         return services;
     }

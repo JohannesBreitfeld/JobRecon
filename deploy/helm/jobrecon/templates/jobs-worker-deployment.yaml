@@ -2,33 +2,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "jobrecon.fullname" . }}-jobs
+  name: {{ include "jobrecon.fullname" . }}-jobs-worker
   labels:
-    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "jobs") | nindent 4 }}
+    {{- include "jobrecon.serviceLabels" (dict "Chart" .Chart "Release" .Release "component" "jobs-worker") | nindent 4 }}
 spec:
-  replicas: {{ .Values.jobs.web.replicaCount }}
+  replicas: {{ .Values.jobs.worker.replicaCount }}
   selector:
     matchLabels:
-      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "jobs") | nindent 6 }}
+      {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "jobs-worker") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "jobs") | nindent 8 }}
+        {{- include "jobrecon.serviceSelectorLabels" (dict "Chart" .Chart "Release" .Release "component" "jobs-worker") | nindent 8 }}
     spec:
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
-        - name: jobs
+        - name: jobs-worker
           image: {{ include "jobrecon.image" (dict "global" .Values.global "service" .Values.jobs) }}
           imagePullPolicy: {{ .Values.global.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 8080
-              protocol: TCP
-            - name: grpc
-              containerPort: 5013
               protocol: TCP
           env:
             - name: ASPNETCORE_ENVIRONMENT
@@ -37,10 +34,6 @@ spec:
               value: http://+:8080
             - name: Kestrel__Endpoints__Http__Protocols
               value: Http1AndHttp2
-            - name: Kestrel__Endpoints__Grpc__Url
-              value: http://+:5013
-            - name: Kestrel__Endpoints__Grpc__Protocols
-              value: Http2
             - name: ConnectionStrings__JobsDb
               valueFrom:
                 secretKeyRef:
@@ -70,27 +63,14 @@ spec:
                   name: {{ include "jobrecon.fullname" . }}-secrets
                   key: grpc-api-key
             - name: Hangfire__EnableServer
-              value: "false"
-          startupProbe:
-            httpGet:
-              path: /health/live
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            failureThreshold: 30
+              value: "true"
           livenessProbe:
             httpGet:
               path: /health/live
               port: http
-            periodSeconds: 15
-            timeoutSeconds: 5
-            failureThreshold: 12
-          readinessProbe:
-            httpGet:
-              path: /health/ready
-              port: http
-            periodSeconds: 10
-            timeoutSeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 10
           resources:
-            {{- toYaml .Values.jobs.web.resources | nindent 12 }}
+            {{- toYaml .Values.jobs.worker.resources | nindent 12 }}
 {{- end }}
