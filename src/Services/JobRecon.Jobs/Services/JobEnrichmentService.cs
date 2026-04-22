@@ -118,6 +118,8 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
         return enrichedCount;
     }
 
+    private const string DeadlineNotFoundError = "Application deadline not found; 30-day fallback applied";
+
     private async Task EnrichJobInternalAsync(Job job, CancellationToken cancellationToken)
     {
         try
@@ -146,12 +148,25 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
                 job.Benefits = enrichedData.Benefits;
             }
 
+            var now = DateTime.UtcNow;
+            var deadlineFallbackApplied = false;
+
             // Only set ExpiresAt if not already set from JobTech
-            if (job.ExpiresAt is null && enrichedData.ExpiresAt is not null)
+            if (job.ExpiresAt is null)
             {
-                job.ExpiresAt = enrichedData.ExpiresAt;
-                _logger.LogDebug("Extracted application deadline {Deadline} for job {JobId}",
-                    enrichedData.ExpiresAt, job.Id);
+                if (enrichedData.ExpiresAt is not null)
+                {
+                    job.ExpiresAt = enrichedData.ExpiresAt;
+                    _logger.LogDebug("Extracted application deadline {Deadline} for job {JobId}",
+                        enrichedData.ExpiresAt, job.Id);
+                }
+                else
+                {
+                    job.ExpiresAt = now.AddDays(30);
+                    deadlineFallbackApplied = true;
+                    _logger.LogDebug("No application deadline found for job {JobId}; applying 30-day fallback {Fallback}",
+                        job.Id, job.ExpiresAt);
+                }
             }
 
             // Geocode location if not already geocoded
@@ -167,9 +182,9 @@ public sealed class JobEnrichmentService : IJobEnrichmentService
             }
 
             job.IsEnriched = true;
-            job.EnrichedAt = DateTime.UtcNow;
-            job.EnrichmentError = null;
-            job.UpdatedAt = DateTime.UtcNow;
+            job.EnrichedAt = now;
+            job.EnrichmentError = deadlineFallbackApplied ? DeadlineNotFoundError : null;
+            job.UpdatedAt = now;
 
             _logger.LogDebug("Enriched job {JobId} from {Url}", job.Id, job.ExternalUrl);
         }
