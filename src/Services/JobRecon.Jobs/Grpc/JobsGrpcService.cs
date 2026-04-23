@@ -79,10 +79,13 @@ public sealed class JobsGrpcService(
                 jobIds.Add(parsed);
         }
 
+        var now = DateTime.UtcNow;
         var jobs = await dbContext.Jobs
             .Include(j => j.Company)
             .Include(j => j.Tags)
             .Where(j => jobIds.Contains(j.Id))
+            .Where(j => j.Status == JobStatus.Active)
+            .Where(j => j.ExpiresAt == null || j.ExpiresAt > now)
             .AsNoTracking()
             .ToListAsync(context.CancellationToken);
 

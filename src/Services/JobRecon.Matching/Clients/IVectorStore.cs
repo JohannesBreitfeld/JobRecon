@@ -12,6 +12,7 @@ public interface IVectorStore
     Task<bool> ExistsAsync(Guid jobId, CancellationToken ct = default);
     Task<HashSet<Guid>> FilterExistingAsync(IEnumerable<Guid> jobIds, CancellationToken ct = default);
     Task SetGeoPayloadBatchAsync(IReadOnlyList<(Guid JobId, GeoPayload Payload)> items, CancellationToken ct = default);
+    Task DeleteAsync(IReadOnlyList<Guid> jobIds, CancellationToken ct = default);
 }
 
 public sealed record VectorSearchResult(Guid JobId, float Score);

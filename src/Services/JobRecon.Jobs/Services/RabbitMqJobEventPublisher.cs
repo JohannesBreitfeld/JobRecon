@@ -10,10 +10,13 @@ namespace JobRecon.Jobs.Services;
 public interface IJobEventPublisher
 {
     Task PublishJobsFetchedAsync(JobsFetchedIntegrationEvent eventData, CancellationToken ct = default);
+    Task PublishJobsExpiredAsync(JobsExpiredIntegrationEvent eventData, CancellationToken ct = default);
 }
 
 public sealed class RabbitMqJobEventPublisher : IJobEventPublisher, IAsyncDisposable
 {
+    private const string JobsExpiredRoutingKey = "jobs.expired";
+
     private readonly RabbitMqSettings _settings;
     private readonly ILogger<RabbitMqJobEventPublisher> _logger;
     private IConnection? _connection;
@@ -67,6 +70,50 @@ public sealed class RabbitMqJobEventPublisher : IJobEventPublisher, IAsyncDispos
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to publish JobsFetchedEvent {EventId}", eventData.EventId);
+        }
+    }
+
+    public async Task PublishJobsExpiredAsync(JobsExpiredIntegrationEvent eventData, CancellationToken ct = default)
+    {
+        if (eventData.JobIds.Count == 0)
+            return;
+
+        try
+        {
+            await EnsureInitializedAsync(ct);
+
+            if (_channel is null)
+            {
+                _logger.LogWarning("RabbitMQ channel not available, skipping expired-jobs event publish");
+                return;
+            }
+
+            var message = JsonSerializer.Serialize(eventData);
+            var body = Encoding.UTF8.GetBytes(message);
+
+            var properties = new BasicProperties
+            {
+                Persistent = true,
+                ContentType = "application/json",
+                MessageId = eventData.EventId.ToString(),
+                Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            };
+
+            await _channel.BasicPublishAsync(
+                exchange: _settings.Exchange,
+                routingKey: JobsExpiredRoutingKey,
+                mandatory: false,
+                basicProperties: properties,
+                body: body,
+                cancellationToken: ct);
+
+            _logger.LogInformation(
+                "Published JobsExpiredEvent {EventId} for {Count} jobs",
+                eventData.EventId, eventData.JobIds.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish JobsExpiredEvent {EventId}", eventData.EventId);
         }
     }
 

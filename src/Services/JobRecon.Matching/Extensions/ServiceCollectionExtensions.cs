@@ -86,6 +86,7 @@ public static class ServiceCollectionExtensions
         // Background workers
         services.AddHostedService<JobEmbeddingWorker>();
         services.AddHostedService<JobsFetchedConsumer>();
+        services.AddHostedService<JobsExpiredConsumer>();
 
         return services;
     }

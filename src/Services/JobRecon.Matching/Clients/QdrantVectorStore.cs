@@ -131,6 +131,23 @@ public sealed class QdrantVectorStore(
         }
     }
 
+    public async Task DeleteAsync(IReadOnlyList<Guid> jobIds, CancellationToken ct = default)
+    {
+        if (jobIds.Count == 0)
+            return;
+
+        try
+        {
+            await client.DeleteAsync(CollectionName, jobIds, cancellationToken: ct);
+            logger.LogInformation("Deleted {Count} vectors from {Collection}", jobIds.Count, CollectionName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to delete {Count} vectors from {Collection}", jobIds.Count, CollectionName);
+            throw;
+        }
+    }
+
     public async Task<bool> ExistsAsync(Guid jobId, CancellationToken ct = default)
     {
         try
