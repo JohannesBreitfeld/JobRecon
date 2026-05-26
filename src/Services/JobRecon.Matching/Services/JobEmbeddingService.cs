@@ -11,9 +11,35 @@ public sealed class JobEmbeddingService(
 {
     private const int FetchBatchSize = 100;
     private const int MaxJobsPerCycle = 100_000;
-    private const int MaxConcurrentEmbeddings = 4;
+    // Ollama on CPU serializes inference per request; client-side parallelism
+    // just queues requests at the server and they exceed HttpClient.Timeout.
+    // Keep concurrency at 1 — throughput is bounded by Ollama either way.
+    private const int MaxConcurrentEmbeddings = 1;
+
+    // Both JobEmbeddingWorker (5-min tick) and JobsFetchedConsumer (per event)
+    // call EmbedPendingJobsAsync. Without this gate they overlap, multiplying
+    // in-flight Ollama requests and saturating the embed queue.
+    private static readonly SemaphoreSlim RunLock = new(1, 1);
 
     public async Task<int> EmbedPendingJobsAsync(CancellationToken ct = default)
+    {
+        if (!await RunLock.WaitAsync(0, ct))
+        {
+            logger.LogDebug("EmbedPendingJobsAsync skipped: another run is in progress");
+            return 0;
+        }
+
+        try
+        {
+            return await EmbedPendingJobsInnerAsync(ct);
+        }
+        finally
+        {
+            RunLock.Release();
+        }
+    }
+
+    private async Task<int> EmbedPendingJobsInnerAsync(CancellationToken ct)
     {
         await vectorStore.EnsureCollectionAsync(ct);
 

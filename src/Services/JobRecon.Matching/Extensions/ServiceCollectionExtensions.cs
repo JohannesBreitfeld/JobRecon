@@ -68,7 +68,10 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<OllamaClient>(client =>
         {
             client.BaseAddress = new Uri(ollamaSettings.BaseUrl);
-            client.Timeout = TimeSpan.FromSeconds(30);
+            // CPU-only Ollama inference of nomic-embed-text is ~30–60s warm,
+            // longer under contention. 30s caused most embeds to die before
+            // returning, wasting all the CPU spent on the abandoned request.
+            client.Timeout = TimeSpan.FromSeconds(120);
         });
         services.AddScoped<IOllamaClient, CachingOllamaClient>();
 
