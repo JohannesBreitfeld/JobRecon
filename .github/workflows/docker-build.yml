@@ -27,9 +27,9 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       any_changed: ${{ steps.check.outputs.any_changed }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -118,7 +118,7 @@ jobs:
         if: matrix.changed != 'true'
         run: echo "Skipping ${{ matrix.service }} - no changes detected"
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: matrix.changed == 'true'
 
       - name: Set up Docker Buildx
@@ -166,7 +166,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: main
 
@@ -199,7 +199,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout gitops repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: JohannesBreitfeld/homelab-gitops
           ssh-key: ${{ secrets.HOMELAB_GITOPS_DEPLOY_KEY }}
